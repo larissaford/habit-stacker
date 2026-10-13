@@ -88,23 +88,110 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
         }
 
-        /* 2-Inch Screen Ultra-Compact Display Mode Override */
+        /*
+         * 2-Inch / Micro Screen Ultra-Compact Layout.
+         * Activates either by manual toggle (body.micro-2in) OR automatically on
+         * very narrow viewports (<= 360px, which covers ~2in displays & smartwatches).
+         * Shared declarations live in .micro-mode selectors applied by both triggers.
+         */
+        body.micro-2in,
+        body.micro-mode {
+            background: #000 !important;
+        }
+        body.micro-2in #app-viewport,
+        body.micro-mode #app-viewport {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 auto !important;
+            padding-bottom: 8px !important;
+        }
+        /* Manual toggle locks to a true 240px frame; auto mode fluidly fills the screen */
         body.micro-2in #app-viewport {
             max-width: 240px !important;
             min-width: 240px !important;
-            padding: 4px !important;
-            margin: 0 auto !important;
+            width: 240px !important;
         }
-        body.micro-2in .micro-hide {
-            display: none !important;
+        body.micro-2in .micro-hide,
+        body.micro-mode .micro-hide { display: none !important; }
+
+        /* Compact header: tighten paddings */
+        body.micro-2in header,
+        body.micro-mode header { padding: 6px 6px !important; margin-bottom: 6px !important; }
+        body.micro-2in #header-streak-count,
+        body.micro-mode #header-streak-count { font-size: 9px !important; }
+        body.micro-2in header button,
+        body.micro-mode header button { width: 24px !important; height: 24px !important; }
+        body.micro-2in #btn-streak-trigger,
+        body.micro-mode #btn-streak-trigger { width: auto !important; padding: 3px 7px !important; }
+
+        /* Stack tabs become icon-only chips */
+        body.micro-2in #stack-tabs-container,
+        body.micro-mode #stack-tabs-container { gap: 4px !important; padding: 0 6px !important; }
+        body.micro-2in .stack-tab-label,
+        body.micro-mode .stack-tab-label { display: none !important; }
+        body.micro-2in #dynamic-stack-tabs button,
+        body.micro-2in #tab-all-stacks,
+        body.micro-mode #dynamic-stack-tabs button,
+        body.micro-mode #tab-all-stacks { padding: 5px 7px !important; }
+
+        /* Main content & cards */
+        body.micro-2in main,
+        body.micro-mode main { padding: 0 6px !important; }
+        body.micro-2in .glass-card,
+        body.micro-mode .glass-card { border-radius: 10px !important; }
+        body.micro-2in #stack-header-banner,
+        body.micro-mode #stack-header-banner { padding: 7px !important; }
+        body.micro-2in #stack-banner-title,
+        body.micro-mode #stack-banner-title { font-size: 11px !important; }
+        body.micro-2in .swipe-card,
+        body.micro-mode .swipe-card { padding: 7px !important; gap: 6px !important; }
+        body.micro-2in .swipe-card span.text-lg,
+        body.micro-mode .swipe-card span.text-lg { font-size: 15px !important; }
+        body.micro-2in .swipe-card h4,
+        body.micro-mode .swipe-card h4 { font-size: 11px !important; }
+
+        /* Floating add button smaller & tucked */
+        body.micro-2in #floating-add-btn,
+        body.micro-mode #floating-add-btn { bottom: 8px !important; right: 8px !important; }
+        body.micro-2in #floating-add-btn button,
+        body.micro-mode #floating-add-btn button { width: 38px !important; height: 38px !important; }
+
+        /* Modals use full micro width */
+        body.micro-2in [id^="modal-"],
+        body.micro-mode [id^="modal-"] { padding: 6px !important; }
+        body.micro-2in [id^="modal-"] > div,
+        body.micro-mode [id^="modal-"] > div { padding: 12px !important; border-radius: 14px !important; }
+
+        /* Heatmap cells shrink */
+        body.micro-2in .heat-cell,
+        body.micro-mode .heat-cell { width: 9px !important; height: 9px !important; }
+
+
+        /* Heatmap */
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
         }
-        body.micro-2in .micro-compact {
-            padding: 4px 6px !important;
-            gap: 4px !important;
+        .heat-cell {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.04);
+            transition: transform 0.15s;
         }
-        body.micro-2in .micro-text {
-            font-size: 10px !important;
-        }
+        .heat-cell:hover { transform: scale(1.25); }
+        .heat-l0 { background: rgba(255,255,255,0.05); }
+        .heat-l1 { background: rgba(99,102,241,0.3); }
+        .heat-l2 { background: rgba(99,102,241,0.55); }
+        .heat-l3 { background: rgba(99,102,241,0.8); }
+        .heat-l4 { background: rgba(129,140,248,1); box-shadow: 0 0 6px rgba(99,102,241,0.6); }
+        .heat-today { outline: 1.5px solid #fbbf24; outline-offset: 1px; }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
         /* Swipe Card Animations and Touch Mechanics */
         .swipe-card {
@@ -161,6 +248,50 @@
         .pulse-streak {
             animation: pulse-glow 2s infinite ease-in-out;
         }
+
+        /* Ambient animated background glow for a modern feel */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            background:
+                radial-gradient(circle at 20% 10%, rgba(99,102,241,0.12), transparent 45%),
+                radial-gradient(circle at 85% 90%, rgba(236,72,153,0.10), transparent 45%);
+            animation: bg-drift 14s ease-in-out infinite alternate;
+        }
+        @keyframes bg-drift {
+            0%   { transform: translate3d(0,0,0) scale(1); }
+            100% { transform: translate3d(0,-12px,0) scale(1.05); }
+        }
+        body.micro-2in::before { display: none; }
+
+        /* Card entrance animation */
+        @keyframes card-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        #habits-list-container > div,
+        #stacks-grid-container > div {
+            animation: card-in 0.28s ease-out both;
+        }
+
+        /* Modal entrance */
+        @keyframes modal-in {
+            from { opacity: 0; transform: scale(0.96) translateY(10px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        [id^="modal-"]:not(.hidden) > div {
+            animation: modal-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+
+        /* Checkmark pop on complete */
+        @keyframes check-pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+        .check-pop { animation: check-pop 0.3s ease-out; }
     </style>
 </head>
 <body class="bg-[#07090e] text-gray-100 min-h-screen flex flex-col items-center justify-start antialiased selection:bg-indigo-500 selection:text-white">
@@ -172,14 +303,14 @@
             <!-- Upper Left: Streak Badge (Clickable for History & Streaks) -->
             <button id="btn-streak-trigger" onclick="openModal('modal-history')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 hover:border-amber-500/60 transition group active:scale-95">
                 <span class="text-amber-500 text-base group-hover:scale-125 transition-transform duration-200 pulse-streak">🔥</span>
-                <span id="header-streak-count" class="font-bold text-xs tracking-wide text-amber-300">0d Streak</span>
+                <span id="header-streak-count" class="font-bold text-xs tracking-wide text-amber-300">0d</span>
             </button>
 
-            <!-- Center App Title / Dynamic Stack Title -->
-            <div class="text-center">
-                <h1 id="app-header-title" class="text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 tracking-wider uppercase">
-                    HABIT STACK
-                </h1>
+            <!-- Center: minimal gradient logo mark (no wordmark) -->
+            <div class="flex-1 flex justify-center">
+                <div class="w-8 h-8 rounded-xl flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-indigo-600/30">
+                    <i class="fa-solid fa-layer-group text-white text-xs"></i>
+                </div>
             </div>
 
             <!-- Upper Right: History & Settings Icons -->
@@ -199,6 +330,7 @@
                 <!-- Icon-Only "All Stacks" Button -->
                 <button id="tab-all-stacks" onclick="switchStack('ALL')" class="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 border border-indigo-400/30 active:scale-95">
                     <i class="fa-solid fa-layer-group text-sm"></i>
+                    <span class="stack-tab-label">All</span>
                 </button>
                 
                 <!-- Dynamic Stacks Tab Bar injected here -->
@@ -529,22 +661,51 @@
                 </button>
             </div>
 
-            <!-- Streak Stats Header Card -->
-            <div class="grid grid-cols-2 gap-3">
+            <!-- Streak Stats Header Cards -->
+            <div class="grid grid-cols-2 gap-2">
                 <div class="glass-card p-3 rounded-xl border border-amber-500/20 text-center">
-                    <div class="text-[10px] uppercase font-bold text-gray-400">Current Streak</div>
-                    <div id="history-current-streak" class="text-xl font-extrabold text-amber-400 mt-0.5">0 Days</div>
+                    <div class="text-[9px] uppercase font-bold text-gray-400 tracking-wide">Current Streak</div>
+                    <div id="history-current-streak" class="text-xl font-extrabold text-amber-400 mt-0.5">0d</div>
+                </div>
+                <div class="glass-card p-3 rounded-xl border border-pink-500/20 text-center">
+                    <div class="text-[9px] uppercase font-bold text-gray-400 tracking-wide">Longest Streak</div>
+                    <div id="history-longest-streak" class="text-xl font-extrabold text-pink-400 mt-0.5">0d</div>
                 </div>
                 <div class="glass-card p-3 rounded-xl border border-indigo-500/20 text-center">
-                    <div class="text-[10px] uppercase font-bold text-gray-400">7-Day Completion</div>
+                    <div class="text-[9px] uppercase font-bold text-gray-400 tracking-wide">7-Day Rate</div>
                     <div id="history-7day-rate" class="text-xl font-extrabold text-indigo-400 mt-0.5">0%</div>
                 </div>
+                <div class="glass-card p-3 rounded-xl border border-emerald-500/20 text-center">
+                    <div class="text-[9px] uppercase font-bold text-gray-400 tracking-wide">Total Done</div>
+                    <div id="history-total-done" class="text-xl font-extrabold text-emerald-400 mt-0.5">0</div>
+                </div>
+            </div>
+
+            <!-- 30-Day Completion Heatmap -->
+            <div class="glass-card p-3 rounded-xl border border-gray-800 space-y-2">
+                <div class="flex items-center justify-between">
+                    <div class="text-xs font-bold text-gray-300">Last 30 Days</div>
+                    <div class="flex items-center gap-1 text-[8px] text-gray-500">
+                        <span>Less</span>
+                        <span class="heat-cell heat-l0" style="width:9px;height:9px;"></span>
+                        <span class="heat-cell heat-l2" style="width:9px;height:9px;"></span>
+                        <span class="heat-cell heat-l4" style="width:9px;height:9px;"></span>
+                        <span>More</span>
+                    </div>
+                </div>
+                <div id="history-heatmap" class="heatmap-grid"></div>
+            </div>
+
+            <!-- Per-Stack Weekly Progress -->
+            <div class="space-y-2">
+                <div class="text-xs font-bold text-gray-300">Stack Progress (7 days)</div>
+                <div id="history-stack-progress" class="space-y-2"></div>
             </div>
 
             <!-- Recent Log Trail -->
             <div class="space-y-2">
-                <div class="text-xs font-bold text-gray-300">Activity History</div>
-                <div id="history-logs-list" class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                <div class="text-xs font-bold text-gray-300">Activity Log</div>
+                <div id="history-logs-list" class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                     <!-- Dynamic Log Items Injected Here -->
                 </div>
             </div>
@@ -561,16 +722,27 @@
         /* APP STATE OBJECT */
         const DEFAULT_STATE = {
             stacks: [
-                { id: 'stack-1', name: 'Morning Stack', icon: '🌅', color: '#6366f1' },
-                { id: 'stack-2', name: 'Productivity', icon: '⚡', color: '#8b5cf6' },
-                { id: 'stack-3', name: 'Night Wind-Down', icon: '🌙', color: '#ec4899' }
+                { id: 'stack-1', name: 'Morning Routine', icon: '🌅', color: '#6366f1' },
+                { id: 'stack-2', name: 'Workout', icon: '💪', color: '#8b5cf6' },
+                { id: 'stack-3', name: 'Wind-Down', icon: '🌙', color: '#ec4899' }
             ],
-            habits: [],
+            habits: [
+                { id: 'h-seed-1', name: 'Drink Water', icon: '💧', stackId: 'stack-1', type: 'check', completed: false, timerMinutes: 15, timerRemaining: 900, counterCurrent: 0, counterTarget: 10 },
+                { id: 'h-seed-2', name: 'Meditate', icon: '🧘', stackId: 'stack-1', type: 'timer', completed: false, timerMinutes: 5, timerRemaining: 300, counterCurrent: 0, counterTarget: 10 },
+                { id: 'h-seed-3', name: 'Push-ups', icon: '💪', stackId: 'stack-2', type: 'counter', completed: false, timerMinutes: 15, timerRemaining: 900, counterCurrent: 0, counterTarget: 20 },
+                { id: 'h-seed-4', name: 'Plank', icon: '🏋️', stackId: 'stack-2', type: 'timer', completed: false, timerMinutes: 1, timerRemaining: 60, counterCurrent: 0, counterTarget: 10 },
+                { id: 'h-seed-5', name: 'Read', icon: '📖', stackId: 'stack-3', type: 'timer', completed: false, timerMinutes: 15, timerRemaining: 900, counterCurrent: 0, counterTarget: 10 }
+            ],
             activeStackId: 'ALL',
             focusMode: false,
             streakCount: 0,
+            longestStreak: 0,
+            lastActiveDate: null,       // the day the habits currently reflect
             lastCompletedDate: null,
             completionLogs: [],
+            // Real history backbone: { "YYYY-MM-DD": { done: n, total: n } }
+            dailyRecords: {},
+            totalCompletions: 0,
             settings: {
                 microScreen: false,
                 textScale: 3, // 1 to 5
@@ -580,8 +752,25 @@
         };
 
         let appState = JSON.parse(localStorage.getItem('habit_stacker_pwa_data')) || DEFAULT_STATE;
+        // Backfill newly added fields for users upgrading from an older save
+        if (!appState.dailyRecords) appState.dailyRecords = {};
+        if (appState.longestStreak === undefined) appState.longestStreak = appState.streakCount || 0;
+        if (appState.totalCompletions === undefined) appState.totalCompletions = (appState.completionLogs || []).length;
+        if (appState.lastActiveDate === undefined) appState.lastActiveDate = null;
+
         let lastDeletedHabit = null; // For Undo Toast
         let activeTimerIntervals = {}; // Active running timers
+
+        /* DATE HELPERS */
+        function todayKey() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        function dateKeyOffset(daysAgo) {
+            const d = new Date();
+            d.setDate(d.getDate() - daysAgo);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
 
         // Helper to save state
         function saveState() {
@@ -591,10 +780,63 @@
 
         /* INITIALIZATION ON WINDOW LOAD */
         window.onload = function() {
+            performDailyRollover();
             applySettingsOnLoad();
-            calculateStreak();
+            applyAutoMicroMode();
+            recomputeStreaks();
             render();
         };
+
+        /* Automatically switch to the ultra-compact layout on very narrow
+           (~2 inch) screens, independent of the manual toggle. */
+        function applyAutoMicroMode() {
+            const mq = window.matchMedia('(max-width: 360px)');
+            const update = (matches) => {
+                if (matches) document.body.classList.add('micro-mode');
+                else document.body.classList.remove('micro-mode');
+            };
+            update(mq.matches);
+            if (mq.addEventListener) mq.addEventListener('change', (e) => update(e.matches));
+            else if (mq.addListener) mq.addListener((e) => update(e.matches));
+        }
+
+        /* DAILY ROLLOVER: snapshot the previous active day into history,
+           then reset habit completion state for the new day. */
+        function performDailyRollover() {
+            const today = todayKey();
+
+            // Always keep today's record in sync with current habit state.
+            if (appState.lastActiveDate === today || appState.lastActiveDate === null) {
+                appState.lastActiveDate = today;
+                syncTodayRecord();
+                return;
+            }
+
+            // A new day has begun. The habit "completed" flags still describe
+            // appState.lastActiveDate, so persist that snapshot first.
+            syncTodayRecordFor(appState.lastActiveDate);
+
+            // Reset habits for the fresh day.
+            appState.habits.forEach(h => {
+                h.completed = false;
+                h.counterCurrent = 0;
+                h.timerRemaining = (h.timerMinutes || 15) * 60;
+            });
+
+            appState.lastActiveDate = today;
+            syncTodayRecord();
+        }
+
+        function syncTodayRecord() {
+            syncTodayRecordFor(todayKey());
+        }
+
+        function syncTodayRecordFor(dateKey) {
+            const total = appState.habits.length;
+            const done = appState.habits.filter(h => h.completed).length;
+            if (total === 0 && done === 0) return;
+            appState.dailyRecords[dateKey] = { done, total };
+        }
 
         function applySettingsOnLoad() {
             if (appState.settings.microScreen) {
@@ -618,6 +860,8 @@
         }
 
         function render() {
+            // Keep today's history record current with live habit state
+            if (appState.lastActiveDate === todayKey()) syncTodayRecord();
             renderHeaderStreak();
             renderStackTabs();
             renderActiveView();
@@ -626,7 +870,7 @@
 
         function renderHeaderStreak() {
             const el = document.getElementById('header-streak-count');
-            if (el) el.textContent = `${appState.streakCount || 0}d Streak`;
+            if (el) el.textContent = `${appState.streakCount || 0}d`;
         }
 
         function renderStackTabs() {
@@ -651,7 +895,7 @@
                 return `
                     <button onclick="switchStack('${stack.id}')" class="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${activeClass} active:scale-95">
                         <span>${stack.icon}</span>
-                        <span>${escapeHtml(stack.name)}</span>
+                        <span class="stack-tab-label">${escapeHtml(stack.name)}</span>
                     </button>
                 `;
             }).join('');
@@ -957,6 +1201,7 @@
                         habit.completed = true;
                         logCompletion(habit);
                         triggerCelebrationConfetti();
+                        checkAndUpdateStreak();
                         saveState();
                     }
                 }, 1000);
@@ -969,10 +1214,11 @@
             if (!habit) return;
 
             habit.counterCurrent = (habit.counterCurrent || 0) + step;
-            if (habit.counterCurrent >= (habit.counterTarget || 10)) {
+            if (habit.counterCurrent >= (habit.counterTarget || 10) && !habit.completed) {
                 habit.completed = true;
                 logCompletion(habit);
                 triggerCelebrationConfetti();
+                checkAndUpdateStreak();
             }
             saveState();
         }
@@ -982,42 +1228,149 @@
         }
 
         function logCompletion(habit) {
-            const today = new Date().toISOString().split('T')[0];
+            const today = todayKey();
             appState.completionLogs.unshift({
                 habitName: habit.name,
+                icon: habit.icon || '⚡',
                 stackId: habit.stackId,
                 date: today,
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             });
-            if (appState.completionLogs.length > 50) appState.completionLogs.pop();
+            if (appState.completionLogs.length > 100) appState.completionLogs.pop();
+            appState.totalCompletions = (appState.totalCompletions || 0) + 1;
         }
 
+        // Called after any completion-state change: refresh today's record & streaks.
         function checkAndUpdateStreak() {
-            const today = new Date().toISOString().split('T')[0];
-            if (appState.lastCompletedDate !== today) {
-                appState.streakCount = (appState.streakCount || 0) + 1;
-                appState.lastCompletedDate = today;
-            }
+            appState.lastActiveDate = todayKey();
+            syncTodayRecord();
+            recomputeStreaks();
         }
 
-        function calculateStreak() {
-            // Keep current streak updated
+        // A day "counts" toward a streak if at least one habit was completed
+        // that day (and there was at least one habit to complete).
+        function dayCounts(dateKey) {
+            const rec = appState.dailyRecords[dateKey];
+            return rec && rec.total > 0 && rec.done > 0;
+        }
+
+        // Recompute current + longest streak purely from dailyRecords.
+        function recomputeStreaks() {
+            // Current streak: count back from today (today itself optional).
+            let current = 0;
+            let offset = 0;
+            // If today isn't done yet, the streak is still alive from yesterday.
+            if (!dayCounts(todayKey())) offset = 1;
+            while (dayCounts(dateKeyOffset(offset))) {
+                current++;
+                offset++;
+            }
+            appState.streakCount = current;
+
+            // Longest streak: scan all recorded days chronologically.
+            const keys = Object.keys(appState.dailyRecords).sort();
+            let longest = 0, run = 0, prev = null;
+            keys.forEach(k => {
+                if (!dayCounts(k)) { run = 0; prev = k; return; }
+                if (prev && isConsecutive(prev, k) && dayCounts(prev)) {
+                    run++;
+                } else {
+                    run = 1;
+                }
+                if (run > longest) longest = run;
+                prev = k;
+            });
+            appState.longestStreak = Math.max(longest, current, appState.longestStreak || 0);
             renderHeaderStreak();
         }
 
+        function isConsecutive(prevKey, key) {
+            const a = new Date(prevKey + 'T00:00:00');
+            const b = new Date(key + 'T00:00:00');
+            return Math.round((b - a) / 86400000) === 1;
+        }
+
         function renderHistoryLogs() {
-            const listEl = document.getElementById('history-logs-list');
+            renderHistoryStats();
+            renderHeatmap();
+            renderStackProgress();
+            renderActivityLog();
+        }
+
+        function renderHistoryStats() {
             const streakEl = document.getElementById('history-current-streak');
+            const longestEl = document.getElementById('history-longest-streak');
             const rateEl = document.getElementById('history-7day-rate');
+            const totalEl = document.getElementById('history-total-done');
 
-            if (streakEl) streakEl.textContent = `${appState.streakCount || 0} Days`;
+            if (streakEl) streakEl.textContent = `${appState.streakCount || 0}d`;
+            if (longestEl) longestEl.textContent = `${appState.longestStreak || 0}d`;
+            if (totalEl) totalEl.textContent = `${appState.totalCompletions || 0}`;
 
-            // Calculate 7 day rate
-            const totalHabits = appState.habits.length;
-            const completedToday = appState.habits.filter(h => h.completed).length;
-            const rate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
+            // 7-day completion rate from dailyRecords (average of done/total over active days)
+            let doneSum = 0, totalSum = 0;
+            for (let i = 0; i < 7; i++) {
+                const rec = appState.dailyRecords[dateKeyOffset(i)];
+                if (rec && rec.total > 0) { doneSum += rec.done; totalSum += rec.total; }
+            }
+            const rate = totalSum > 0 ? Math.round((doneSum / totalSum) * 100) : 0;
             if (rateEl) rateEl.textContent = `${rate}%`;
+        }
 
+        function renderHeatmap() {
+            const grid = document.getElementById('history-heatmap');
+            if (!grid) return;
+            const today = todayKey();
+            let cells = '';
+            // Show last 28 days (4 weeks), oldest first
+            for (let i = 27; i >= 0; i--) {
+                const key = dateKeyOffset(i);
+                const rec = appState.dailyRecords[key];
+                let level = 0;
+                if (rec && rec.total > 0) {
+                    const pct = rec.done / rec.total;
+                    if (pct >= 1) level = 4;
+                    else if (pct >= 0.66) level = 3;
+                    else if (pct >= 0.33) level = 2;
+                    else if (pct > 0) level = 1;
+                }
+                const todayCls = key === today ? ' heat-today' : '';
+                const label = rec ? `${key}: ${rec.done}/${rec.total}` : `${key}: no activity`;
+                cells += `<div class="heat-cell heat-l${level}${todayCls}" title="${label}"></div>`;
+            }
+            grid.innerHTML = cells;
+        }
+
+        function renderStackProgress() {
+            const container = document.getElementById('history-stack-progress');
+            if (!container) return;
+            if (appState.stacks.length === 0) {
+                container.innerHTML = `<div class="text-xs text-gray-500 text-center py-2">No stacks yet.</div>`;
+                return;
+            }
+            container.innerHTML = appState.stacks.map(stack => {
+                const stackHabits = appState.habits.filter(h => h.stackId === stack.id);
+                const total = stackHabits.length;
+                const done = stackHabits.filter(h => h.completed).length;
+                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                return `
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between text-[11px]">
+                            <span class="text-gray-300 font-medium flex items-center gap-1.5">
+                                <span>${stack.icon}</span>${escapeHtml(stack.name)}
+                            </span>
+                            <span class="text-gray-500 font-mono">${done}/${total}</span>
+                        </div>
+                        <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500" style="width:${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderActivityLog() {
+            const listEl = document.getElementById('history-logs-list');
             if (!listEl) return;
 
             if (!appState.completionLogs || appState.completionLogs.length === 0) {
@@ -1025,15 +1378,25 @@
                 return;
             }
 
-            listEl.innerHTML = appState.completionLogs.slice(0, 15).map(log => `
-                <div class="flex items-center justify-between p-2 rounded-lg bg-gray-900/60 border border-gray-800/80 text-xs">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-check text-emerald-400 text-[10px]"></i>
-                        <span class="font-medium text-gray-200">${escapeHtml(log.habitName)}</span>
+            listEl.innerHTML = appState.completionLogs.slice(0, 25).map(log => {
+                const stack = appState.stacks.find(s => s.id === log.stackId);
+                const stackName = stack ? stack.name : 'Unknown';
+                return `
+                    <div class="flex items-center justify-between p-2 rounded-lg bg-gray-900/60 border border-gray-800/80 text-xs">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="flex-shrink-0">${log.icon || '✅'}</span>
+                            <div class="min-w-0">
+                                <div class="font-medium text-gray-200 truncate">${escapeHtml(log.habitName)}</div>
+                                <div class="text-[9px] text-gray-500 truncate">${escapeHtml(stackName)}</div>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0 ml-2">
+                            <div class="text-[10px] text-gray-400 font-mono">${log.time}</div>
+                            <div class="text-[8px] text-gray-600 font-mono">${log.date}</div>
+                        </div>
                     </div>
-                    <span class="text-[10px] text-gray-500 font-mono">${log.time}</span>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function switchStack(stackId) {
@@ -1244,6 +1607,11 @@
                     const parsed = JSON.parse(e.target.result);
                     if (parsed && parsed.stacks && parsed.habits) {
                         appState = parsed;
+                        if (!appState.dailyRecords) appState.dailyRecords = {};
+                        if (appState.longestStreak === undefined) appState.longestStreak = appState.streakCount || 0;
+                        if (appState.totalCompletions === undefined) appState.totalCompletions = (appState.completionLogs || []).length;
+                        if (appState.lastActiveDate === undefined) appState.lastActiveDate = todayKey();
+                        recomputeStreaks();
                         saveState();
                         showUndoToast("Data successfully imported!");
                     }
@@ -1306,6 +1674,10 @@
                 document.getElementById('habit-form').reset();
                 populateStackSelect(appState.activeStackId !== 'ALL' ? appState.activeStackId : appState.stacks[0]?.id);
                 setHabitType('check');
+            }
+            if (modalId === 'modal-history') {
+                recomputeStreaks();
+                renderHistoryLogs();
             }
             const el = document.getElementById(modalId);
             if (el) el.classList.remove('hidden');
