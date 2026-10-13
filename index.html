@@ -249,6 +249,13 @@
             animation: pulse-glow 2s infinite ease-in-out;
         }
 
+        /* Focus mode: strip distractions so the active stack takes over the screen */
+        body.focus-active header,
+        body.focus-active #stack-tabs-container,
+        body.focus-active #floating-add-btn { display: none !important; }
+        body.focus-active #app-viewport { padding-top: 8px !important; }
+        body.focus-active .swipe-card.opacity-60 { display: none !important; }
+
         /* Ambient animated background glow for a modern feel */
         body::before {
             content: '';
@@ -783,6 +790,9 @@
             performDailyRollover();
             applySettingsOnLoad();
             applyAutoMicroMode();
+            // Fullscreen can't be re-entered without a user gesture, so start clean.
+            appState.focusMode = false;
+            syncFocusModeUI();
             recomputeStreaks();
             render();
         };
@@ -1406,12 +1416,57 @@
 
         function toggleFocusMode() {
             appState.focusMode = !appState.focusMode;
+            syncFocusModeUI();
+
+            if (appState.focusMode) {
+                requestAppFullscreen();
+            } else {
+                exitAppFullscreen();
+            }
+        }
+
+        function syncFocusModeUI() {
             const banner = document.getElementById('focus-mode-banner');
             if (banner) {
                 if (appState.focusMode) banner.classList.remove('hidden');
                 else banner.classList.add('hidden');
             }
+            document.body.classList.toggle('focus-active', appState.focusMode);
+            const btn = document.getElementById('btn-focus-mode');
+            if (btn) {
+                const label = btn.querySelector('span');
+                if (label) label.textContent = appState.focusMode ? 'Exit' : 'Focus';
+            }
         }
+
+        function requestAppFullscreen() {
+            const el = document.documentElement;
+            const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+            if (fn) {
+                try { fn.call(el).catch(() => {}); } catch (e) { /* fullscreen may be blocked */ }
+            }
+        }
+
+        function exitAppFullscreen() {
+            if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+                const fn = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+                if (fn) {
+                    try { fn.call(document).catch(() => {}); } catch (e) { /* ignore */ }
+                }
+            }
+        }
+
+        // Keep focus-mode state in sync when the user exits fullscreen via Esc / browser UI.
+        function handleFullscreenChange() {
+            const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+            if (!isFs && appState.focusMode) {
+                appState.focusMode = false;
+                syncFocusModeUI();
+            }
+        }
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('msfullscreenchange', handleFullscreenChange);
 
         function deleteHabit(habitId) {
             const index = appState.habits.findIndex(h => h.id === habitId);
