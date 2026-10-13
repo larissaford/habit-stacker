@@ -1060,13 +1060,13 @@
             // Render Habits List with Touch/Swipe Event Handlers Attached
             habitsContainer.innerHTML = stackHabits.map((habit, idx) => {
                 const isCompleted = habit.completed;
-                // Completed tasks get a deeper purple fill, a left accent bar and
-                // slightly muted contents — a modern "done" treatment.
+                // Completed tasks fade into a darker, greyed-out card so active
+                // tasks stand out — with a subtle left accent to signal "done".
                 const cardBg = isCompleted
-                    ? 'bg-indigo-600/15 border-indigo-500/40 shadow-inner shadow-indigo-900/30'
+                    ? 'bg-black/40 border-gray-800/60 opacity-55 saturate-50'
                     : 'bg-gray-900/60 border-gray-800';
                 const completedAccent = isCompleted
-                    ? 'before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-gradient-to-b before:from-indigo-400 before:to-purple-500'
+                    ? 'before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-gradient-to-b before:from-indigo-500/60 before:to-purple-500/60'
                     : '';
 
                 return `
@@ -1091,9 +1091,9 @@
                              onmousedown="handleMouseDown(event, '${habit.id}')">
 
                             <div class="flex items-center gap-3 flex-1 min-w-0">
-                                <span class="text-lg flex-shrink-0 transition-opacity duration-300 ${isCompleted ? 'opacity-50' : ''}">${habit.icon || '⚡'}</span>
+                                <span class="text-lg flex-shrink-0 transition-opacity duration-300 ${isCompleted ? 'opacity-40 grayscale' : ''}">${habit.icon || '⚡'}</span>
                                 <div class="truncate">
-                                    <h4 class="text-xs font-bold transition-colors duration-300 ${isCompleted ? 'line-through text-indigo-300/70' : 'text-gray-100'} truncate">${escapeHtml(habit.name)}</h4>
+                                    <h4 class="text-xs font-bold transition-colors duration-300 ${isCompleted ? 'line-through text-gray-500' : 'text-gray-100'} truncate">${escapeHtml(habit.name)}</h4>
                                     ${getHabitBadgeHTML(habit) ? `<div class="text-[10px] text-gray-400 flex items-center gap-1.5 mt-0.5">${getHabitBadgeHTML(habit)}</div>` : ''}
                                 </div>
                             </div>
