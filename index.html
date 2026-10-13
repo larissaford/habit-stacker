@@ -1,1300 +1,1333 @@
 <!DOCTYPE html>
-<html lang="en" class="dark h-full">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Habit Stacker</title>
-  
-  <!-- Tailwind CSS & FontAwesome Icons -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-          },
-          colors: {
-            brand: {
-              50: '#f0fdf4',
-              100: '#dcfce7',
-              400: '#4ade80',
-              500: '#22c55e',
-              600: '#16a34a',
-              700: '#15803d',
-              900: '#14532d',
-              950: '#052e16',
-            },
-            accent: {
-              500: '#6366f1',
-              600: '#4f46e5',
-            }
-          }
-        }
-      }
-    }
-  </script>
-
-  <style>
-    * {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    body {
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: manipulation;
-    }
-
-    /* Glassmorphism Accents */
-    .glass-card {
-      background: rgba(30, 41, 59, 0.7);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    /* Swipe Container Dynamics */
-    .swipe-wrapper {
-      position: relative;
-      overflow: hidden;
-      border-radius: 0.75rem;
-    }
-
-    .swipe-actions-layer {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      background: #0f172a;
-      z-index: 1;
-    }
-
-    .swipe-card-content {
-      position: relative;
-      z-index: 2;
-      background: #1e293b;
-      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      will-change: transform;
-    }
-
-    /* Ambient Breathing & Glow Animations */
-    @keyframes pulseGlow {
-      0%, 100% {
-        transform: scale(0.95);
-        opacity: 0.35;
-        filter: blur(40px);
-      }
-      50% {
-        transform: scale(1.15);
-        opacity: 0.65;
-        filter: blur(60px);
-      }
-    }
-
-    @keyframes rotateGradient {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    .ambient-glow-1 {
-      animation: pulseGlow 8s ease-in-out infinite;
-    }
-
-    .ambient-glow-2 {
-      animation: pulseGlow 6s ease-in-out infinite reverse;
-    }
-
-    .ambient-particles {
-      animation: rotateGradient 40s linear infinite;
-    }
-
-    .paused-anim * {
-      animation: none !important;
-    }
-
-    /* Micro Icon Toggle Utility */
-    .micro-mode .habit-icon-box {
-      width: 1.25rem !important;
-      height: 1.25rem !important;
-      min-width: 1.25rem !important;
-      font-size: 0.65rem !important;
-      border-radius: 0.25rem !important;
-      border: none !important;
-      background: rgba(34, 197, 94, 0.15) !important;
-    }
-    
-    .micro-mode .habit-cue-text {
-      display: none !important;
-    }
-
-    .micro-mode .stack-card-padding {
-      padding: 0.5rem !important;
-    }
-
-    /* Smooth Scrollbar */
-    ::-webkit-scrollbar {
-      width: 4px;
-      height: 4px;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(148, 163, 184, 0.2);
-      border-radius: 999px;
-    }
-  </style>
-</head>
-
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between antialiased selection:bg-brand-500 selection:text-white">
-
-  <header class="bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 border-b border-slate-800/80 px-3 py-2.5">
-    <div class="max-w-2xl mx-auto flex items-center justify-between gap-2">
-      <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-teal-400 flex items-center justify-center text-white font-extrabold text-sm shadow-lg shadow-brand-600/20">
-          ⚡
-        </div>
-        <div>
-          <h1 class="text-sm sm:text-base font-bold text-white tracking-tight leading-none">Habit Stacker</h1>
-          <p class="text-[10px] text-slate-400 font-medium">Daily Routines & Workouts</p>
-        </div>
-      </div>
-
-      <!-- Quick Toggles -->
-      <div class="flex items-center gap-1.5">
-        <button id="microModeBtn" onclick="toggleMicroMode()" class="p-2 min-h-[40px] min-w-[40px] rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs flex items-center justify-center gap-1 transition border border-slate-700/60" title="Micro Icon Mode for Small Screens">
-          <i class="fa-solid fa-compress text-brand-400"></i>
-          <span class="hidden sm:inline text-[11px] font-semibold">Micro View</span>
-        </button>
-
-        <button onclick="toggleViewTab()" id="viewTabBtn" class="p-2 min-h-[40px] px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1 border border-slate-700/60">
-          <i class="fa-solid fa-chart-line text-accent-500"></i>
-          <span id="viewTabLabel" class="hidden xs:inline">Stats</span>
-        </button>
-
-        <button onclick="openStackModal()" class="p-2 min-h-[40px] px-3 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold flex items-center gap-1 shadow-md shadow-brand-600/20 transition">
-          <i class="fa-solid fa-plus"></i>
-          <span class="hidden xs:inline">New Stack</span>
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <main id="appMain" class="flex-1 max-w-2xl w-full mx-auto p-2 sm:p-4 space-y-4">
-    
-    <!-- ACTIVE VIEW: STACKS -->
-    <div id="stacksView" class="space-y-4">
-      
-      <!-- 7-DAY STREAK & PROGRESS HEADER -->
-      <section class="glass-card rounded-2xl p-3 sm:p-4 border border-slate-800 shadow-xl">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">7-Day Habit Consistency</span>
-          <span id="streakBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1">
-            🔥 <span id="streakCount">0</span> Day Streak
-          </span>
-        </div>
-        <div id="weeklyProgress" class="grid grid-cols-7 gap-1.5 text-center">
-          <!-- Dynamic Days -->
-        </div>
-      </section>
-
-      <!-- ARCHIVE VIEW BANNER (When viewing archived items) -->
-      <div id="archiveBanner" class="hidden bg-amber-950/40 border border-amber-500/30 text-amber-200 rounded-xl p-3 flex items-center justify-between">
-        <div class="flex items-center gap-2 text-xs">
-          <i class="fa-solid fa-box-archive text-amber-400"></i>
-          <span>Viewing <strong>Archived Stacks & Tasks</strong></span>
-        </div>
-        <button onclick="toggleArchiveView()" class="text-xs bg-amber-800/80 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg font-semibold">
-          Exit Archive
-        </button>
-      </div>
-
-      <!-- STACKS LIST CONTAINER -->
-      <section id="stacksContainer" class="space-y-4">
-        <!-- Rendered Dynamically -->
-      </section>
-    </div>
-
-    <!-- STATS / HISTORY VIEW -->
-    <div id="statsView" class="hidden space-y-4">
-      <section class="glass-card rounded-2xl p-4 border border-slate-800 space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h2 class="text-base font-bold text-white flex items-center gap-2">
-            <i class="fa-solid fa-chart-pie text-accent-500"></i> Habit Analytics
-          </h2>
-          <span class="text-xs text-slate-400" id="totalCompletionsCount">0 Total Logged</span>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-center">
-            <p class="text-[11px] text-slate-400 font-semibold">Total Completed</p>
-            <p id="totalHabitsStat" class="text-2xl font-black text-brand-400 mt-0.5">0</p>
-          </div>
-          <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 text-center">
-            <p class="text-[11px] text-slate-400 font-semibold">Active Streak</p>
-            <p id="activeStreakStat" class="text-2xl font-black text-amber-400 mt-0.5">0 Days</p>
-          </div>
-        </div>
-
-        <div>
-          <h3 class="text-xs font-bold text-slate-300 mb-2">Recent Completion Timeline</h3>
-          <div id="historyTimeline" class="space-y-2 max-h-80 overflow-y-auto pr-1">
-            <!-- Dynamic History Feed -->
-          </div>
-        </div>
-      </section>
-    </div>
-  </main>
-
-  <!-- MODAL: ADD / EDIT STACK -->
-  <div id="stackModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3">
-    <div class="bg-slate-900 rounded-2xl border border-slate-800 w-full max-w-md p-4 shadow-2xl space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h3 id="stackModalTitle" class="text-base font-bold text-white">Create Habit Stack</h3>
-        <button onclick="closeStackModal()" class="text-slate-400 hover:text-white p-2 min-h-[40px] min-w-[40px] flex items-center justify-center">✕</button>
-      </div>
-      <form id="stackForm" onsubmit="handleSaveStack(event)" class="space-y-3">
-        <input type="hidden" id="stackIdInput" value="">
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Stack Title</label>
-          <input type="text" id="stackTitleInput" required placeholder="e.g. Morning Glow, Post-Workout, Night Wind-Down" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:border-brand-500 focus:outline-none min-h-[44px]">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Category Badge</label>
-          <select id="stackCategoryInput" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:border-brand-500 focus:outline-none min-h-[44px]">
-            <option value="🌅 Morning">🌅 Morning Routine</option>
-            <option value="💪 Workout">💪 Workout & Fitness</option>
-            <option value="💼 Work/Study">💼 Work & Study</option>
-            <option value="🌙 Evening">🌙 Evening Wind-Down</option>
-            <option value="⚡ General">⚡ General Stack</option>
-          </select>
-        </div>
-        <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
-          <button type="button" onclick="closeStackModal()" class="px-4 py-2 min-h-[44px] rounded-xl bg-slate-800 text-slate-300 font-semibold text-xs">Cancel</button>
-          <button type="submit" class="px-4 py-2 min-h-[44px] rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-md">Save Stack</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: ADD / EDIT HABIT -->
-  <div id="habitModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3">
-    <div class="bg-slate-900 rounded-2xl border border-slate-800 w-full max-w-md p-4 shadow-2xl space-y-3">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-        <h3 id="habitModalTitle" class="text-base font-bold text-white">Add Task to Stack</h3>
-        <button onclick="closeHabitModal()" class="text-slate-400 hover:text-white p-2 min-h-[40px] min-w-[40px] flex items-center justify-center">✕</button>
-      </div>
-      <form id="habitForm" onsubmit="handleSaveHabit(event)" class="space-y-3">
-        <input type="hidden" id="habitStackIdInput" value="">
-        <input type="hidden" id="habitIdInput" value="">
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Task Title (Auto-detects icon)</label>
-          <input type="text" id="habitTitleInput" required placeholder="e.g. Drink 500ml water, 20 Squats, Read book" oninput="handleHabitTitleInput(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:border-brand-500 focus:outline-none min-h-[44px]">
-        </div>
-
-        <div>
-          <div class="flex justify-between items-center mb-1">
-            <label class="block text-xs font-semibold text-slate-300">Icon Preference</label>
-            <span id="autoIconBadge" class="text-[10px] bg-brand-500/15 text-brand-400 px-2 py-0.5 rounded-full font-mono">Auto Icon</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div id="selectedIconPreview" class="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-lg text-brand-400 shrink-0">
-              💧
-            </div>
-            <select id="habitIconSelect" onchange="manualIconSelect(this.value)" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white focus:border-brand-500 focus:outline-none min-h-[44px]">
-              <option value="auto">✨ Smart Auto Pick</option>
-              <option value="💧">💧 Water / Drink</option>
-              <option value="🏋️">🏋️ Workout / Gym</option>
-              <option value="🏃">🏃 Cardio / Run</option>
-              <option value="🧘">🧘 Meditate / Mind</option>
-              <option value="📚">📚 Read / Study</option>
-              <option value="📝">📝 Journal / Write</option>
-              <option value="🌙">🌙 Sleep / Bed</option>
-              <option value="☕">☕ Coffee / Tea</option>
-              <option value="🤸">🤸 Stretch / Yoga</option>
-              <option value="🍎">🍎 Nutrition / Food</option>
-              <option value="💻">💻 Code / Work</option>
-              <option value="custom">🖼️ Custom Image Upload</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Custom Image Upload Section -->
-        <div id="customImageContainer" class="hidden space-y-1">
-          <label class="block text-xs font-semibold text-slate-300">Upload Personal Photo</label>
-          <input type="file" id="customImageInput" accept="image/*" onchange="handleCustomImageUpload(event)" class="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-brand-600 file:text-white">
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Duration (Mins)</label>
-            <input type="number" id="habitDurationInput" min="1" max="180" value="5" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white focus:border-brand-500 focus:outline-none min-h-[44px]">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Sets / Reps (Workout)</label>
-            <input type="text" id="habitWorkoutInput" placeholder="e.g. 3x12 Reps" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white focus:border-brand-500 focus:outline-none min-h-[44px]">
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-slate-300 mb-1">Trigger Cue (Optional)</label>
-          <input type="text" id="habitCueInput" placeholder="e.g. Right after waking up" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white focus:border-brand-500 focus:outline-none min-h-[44px]">
-        </div>
-
-        <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
-          <button type="button" onclick="closeHabitModal()" class="px-4 py-2 min-h-[44px] rounded-xl bg-slate-800 text-slate-300 font-semibold text-xs">Cancel</button>
-          <button type="submit" class="px-4 py-2 min-h-[44px] rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-md">Save Task</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- FOCUS MODE OVERLAY -->
-  <div id="focusOverlay" class="fixed inset-0 bg-slate-950 z-50 hidden flex flex-col justify-between p-4 overflow-hidden transition-all duration-300">
-    <!-- Ambient Background Wave Container -->
-    <div id="ambientContainer" class="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
-      <div class="ambient-glow-1 w-[320px] h-[320px] sm:w-[500px] sm:h-[500px] rounded-full bg-gradient-to-tr from-brand-600/30 via-emerald-500/20 to-teal-400/10 blur-3xl"></div>
-      <div class="ambient-glow-2 absolute w-[280px] h-[280px] sm:w-[420px] sm:h-[420px] rounded-full bg-gradient-to-bl from-accent-600/25 via-indigo-500/20 to-teal-500/15 blur-3xl"></div>
-      <div class="ambient-particles absolute inset-0 opacity-15 bg-[radial-gradient(#22c55e_1px,transparent_1px)] [background-size:24px_24px]"></div>
-    </div>
-
-    <!-- Focus Header Bar -->
-    <div class="relative z-10 flex items-center justify-between border-b border-slate-800/80 pb-3">
-      <div class="flex items-center gap-2">
-        <span class="w-2 h-2 rounded-full bg-brand-400 animate-ping"></span>
-        <span class="text-brand-400 text-xs font-mono uppercase tracking-widest font-extrabold">Focus Flow</span>
-      </div>
-
-      <!-- Ambient FX Toggle Button -->
-      <button onclick="toggleAmbientFX()" id="ambientToggleBtn" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-slate-900/80 border border-slate-800 text-slate-300 flex items-center gap-1.5 backdrop-blur-md">
-        <span>✨ Ambient FX:</span>
-        <span id="ambientStatusText" class="text-brand-400 font-bold">ON</span>
-      </button>
-
-      <button onclick="exitFocusMode()" class="text-slate-400 hover:text-white p-2 min-h-[40px] min-w-[40px] flex items-center justify-center font-bold text-lg">✕</button>
-    </div>
-
-    <!-- Focus Task Content Box -->
-    <div class="relative z-10 my-auto text-center space-y-5 max-w-sm mx-auto w-full">
-      <div id="focusIconBox" class="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-3xl bg-slate-900/90 border border-brand-500/30 flex items-center justify-center text-4xl sm:text-5xl shadow-2xl shadow-brand-500/10">
-        🧘
-      </div>
-      
-      <div>
-        <h2 id="focusHabitTitle" class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Meditate 10 mins</h2>
-        <p id="focusCueText" class="text-xs sm:text-sm text-brand-300/80 mt-1">Anchor: Right after waking up</p>
-        <div id="focusWorkoutBadge" class="hidden inline-block mt-2 px-3 py-1 bg-accent-600/20 text-accent-400 border border-accent-500/30 rounded-full text-xs font-bold">
-          💪 3 Sets x 12 Reps
-        </div>
-      </div>
-
-      <!-- Timer Counter Display -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-2xl backdrop-blur-md">
-        <div id="focusTimerDisplay" class="text-4xl sm:text-6xl font-black font-mono text-brand-400 tracking-wider">
-          05:00
-        </div>
-        <div class="flex justify-center gap-2 sm:gap-3 mt-4">
-          <button id="focusStartBtn" onclick="toggleTimer()" class="min-h-[48px] px-6 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-sm shadow-lg shadow-brand-600/25 transition flex items-center gap-2">
-            <i class="fa-solid fa-play text-xs"></i> <span>Start Timer</span>
-          </button>
-          <button onclick="resetTimer()" class="min-h-[48px] px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs flex items-center justify-center border border-slate-700">
-            <i class="fa-solid fa-rotate-right"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Focus Action Buttons -->
-    <div class="relative z-10 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-      <button onclick="navigateFocus(-1)" class="flex-1 py-3 min-h-[44px] bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-300 text-xs font-semibold">
-        ← Prev
-      </button>
-      <button onclick="completeCurrentFocusHabit()" class="flex-[2] py-3 min-h-[44px] bg-brand-600 hover:bg-brand-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-brand-600/20 flex items-center justify-center gap-2">
-        <i class="fa-solid fa-check"></i> Complete & Next
-      </button>
-      <button onclick="navigateFocus(1)" class="flex-1 py-3 min-h-[44px] bg-slate-900/90 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-300 text-xs font-semibold">
-        Skip →
-      </button>
-    </div>
-  </div>
-
-  <footer class="bg-slate-900/60 border-t border-slate-800/80 p-2 text-center text-slate-400 text-xs">
-    <div class="flex justify-center items-center gap-3 text-[11px]">
-      <button onclick="loadDemoData()" class="text-brand-400 hover:underline">🚀 Load Demo Stacks</button>
-      <span>•</span>
-      <button onclick="toggleArchiveView()" class="text-amber-400 hover:underline">📦 Archive</button>
-      <span>•</span>
-      <button onclick="confirmClearAll()" class="text-rose-400 hover:underline">🧹 Reset Data</button>
-    </div>
-  </footer>
-
-  <script>
-    // AUTO KEYWORD ICON MAPPING
-    const KEYWORD_ICONS = [
-      { keywords: ['water', 'drink', 'hydrate', 'sip', 'fluid'], icon: '💧' },
-      { keywords: ['workout', 'gym', 'lift', 'squat', 'exercise', 'pushup', 'weights', 'train'], icon: '🏋️' },
-      { keywords: ['run', 'walk', 'jog', 'cardio', 'sprint'], icon: '🏃' },
-      { keywords: ['read', 'book', 'study', 'learn', 'chapter'], icon: '📚' },
-      { keywords: ['meditate', 'mind', 'breath', 'relax', 'zen', 'calm'], icon: '🧘' },
-      { keywords: ['journal', 'write', 'note', 'reflect', 'diary'], icon: '📝' },
-      { keywords: ['sleep', 'bed', 'rest', 'night', 'nap'], icon: '🌙' },
-      { keywords: ['coffee', 'tea', 'espresso', 'caffeine', 'brew'], icon: '☕' },
-      { keywords: ['stretch', 'yoga', 'flexibility', 'pose'], icon: '🤸' },
-      { keywords: ['clean', 'organize', 'tidy', 'sweep', 'wash'], icon: '🧹' },
-      { keywords: ['food', 'eat', 'meal', 'nutrition', 'snack', 'breakfast', 'lunch', 'dinner', 'apple'], icon: '🍎' },
-      { keywords: ['code', 'work', 'project', 'dev', 'laptop'], icon: '💻' }
-    ];
-
-    // APPLICATION STATE
-    let appData = {
-      stacks: [],
-      history: {}, // Keyed by YYYY-MM-DD -> Array of habit IDs completed
-      microMode: false,
-      ambientFX: true
-    };
-
-    let showingArchived = false;
-    let showingStats = false;
-    let customImageBase64 = null;
-    let timerInterval = null;
-    let timerSeconds = 0;
-    let isTimerRunning = false;
-    let currentFocusStack = null;
-    let currentFocusIndex = 0;
-
-    // STORAGE LOAD & SAVE
-    function loadAppData() {
-      const saved = localStorage.getItem('habit_stacker_v3');
-      if (saved) {
-        try {
-          appData = JSON.parse(saved);
-        } catch(e) {
-          console.error("Failed to parse local storage", e);
-        }
-      } else {
-        loadDemoData();
-      }
-
-      if (appData.microMode) {
-        document.body.classList.add('micro-mode');
-      }
-      applyAmbientFXState();
-      renderApp();
-    }
-
-    function saveAppData() {
-      localStorage.setItem('habit_stacker_v3', JSON.stringify(appData));
-    }
-
-    // AUTO ICON ENGINE
-    function detectIconForTitle(title) {
-      if (!title) return '✨';
-      const cleanTitle = title.toLowerCase().trim();
-      for (const group of KEYWORD_ICONS) {
-        for (const kw of group.keywords) {
-          if (cleanTitle.includes(kw)) {
-            return group.icon;
-          }
-        }
-      }
-      return '✨';
-    }
-
-    function handleHabitTitleInput(text) {
-      const select = document.getElementById('habitIconSelect');
-      if (select.value === 'auto') {
-        const iconEmoji = detectIconForTitle(text);
-        updateIconPreview(iconEmoji);
-      }
-    }
-
-    function manualIconSelect(val) {
-      const customContainer = document.getElementById('customImageContainer');
-      const badge = document.getElementById('autoIconBadge');
-
-      if (val === 'custom') {
-        customContainer.classList.remove('hidden');
-        badge.classList.add('hidden');
-        if (customImageBase64) {
-          updateIconPreviewCustom(customImageBase64);
-        }
-      } else {
-        customContainer.classList.add('hidden');
-        if (val === 'auto') {
-          badge.classList.remove('hidden');
-          const title = document.getElementById('habitTitleInput').value;
-          updateIconPreview(detectIconForTitle(title));
-        } else {
-          badge.classList.add('hidden');
-          updateIconPreview(val);
-        }
-      }
-    }
-
-    function handleCustomImageUpload(e) {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-          customImageBase64 = evt.target.result;
-          updateIconPreviewCustom(customImageBase64);
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-
-    function updateIconPreview(emoji) {
-      document.getElementById('selectedIconPreview').innerHTML = emoji;
-    }
-
-    function updateIconPreviewCustom(src) {
-      document.getElementById('selectedIconPreview').innerHTML = `<img src="${src}" class="w-full h-full object-cover rounded-xl">`;
-    }
-
-    // TOGGLE MICRO MODE FOR 2-INCH SCREENS
-    function toggleMicroMode() {
-      appData.microMode = !appData.microMode;
-      if (appData.microMode) {
-        document.body.classList.add('micro-mode');
-      } else {
-        document.body.classList.remove('micro-mode');
-      }
-      saveAppData();
-      renderApp();
-    }
-
-    // TOGGLE STATS VIEW
-    function toggleViewTab() {
-      showingStats = !showingStats;
-      const stacksView = document.getElementById('stacksView');
-      const statsView = document.getElementById('statsView');
-      const label = document.getElementById('viewTabLabel');
-
-      if (showingStats) {
-        stacksView.classList.add('hidden');
-        statsView.classList.remove('hidden');
-        label.innerText = 'Stacks';
-        renderStats();
-      } else {
-        stacksView.classList.remove('hidden');
-        statsView.classList.add('hidden');
-        label.innerText = 'Stats';
-        renderApp();
-      }
-    }
-
-    // RENDER MAIN APPLICATION
-    function renderApp() {
-      renderDashboard();
-      renderStacks();
-    }
-
-    function renderDashboard() {
-      const container = document.getElementById('weeklyProgress');
-      container.innerHTML = '';
-
-      const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-      const today = new Date();
-      let streak = 0;
-
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(today.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        const dayName = days[d.getDay()];
-        const isToday = i === 0;
-
-        const completedList = appData.history[dateStr] || [];
-        const isDone = completedList.length > 0;
-
-        if (isDone) streak++;
-
-        const dayEl = document.createElement('div');
-        dayEl.className = `flex flex-col items-center p-1.5 rounded-xl border ${
-          isToday ? 'border-brand-500/80 bg-brand-500/10' : 'border-slate-800 bg-slate-900/50'
-        }`;
-        
-        dayEl.innerHTML = `
-          <span class="text-[10px] text-slate-400 font-semibold">${dayName}</span>
-          <div class="w-5 h-5 rounded-full mt-1 flex items-center justify-center text-[10px] font-bold ${
-            isDone ? 'bg-brand-600 text-white' : 'bg-slate-800 text-slate-500'
-          }">
-            ${isDone ? '✓' : d.getDate()}
-          </div>
-        `;
-        container.appendChild(dayEl);
-      }
-
-      document.getElementById('streakCount').innerText = streak;
-    }
-
-    function renderStacks() {
-      const container = document.getElementById('stacksContainer');
-      container.innerHTML = '';
-
-      const filteredStacks = appData.stacks.filter(s => !!s.archived === showingArchived);
-
-      if (filteredStacks.length === 0) {
-        container.innerHTML = `
-          <div class="text-center py-12 px-4 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
-            <i class="fa-solid fa-layer-group text-3xl text-slate-600 mb-2"></i>
-            <p class="text-xs text-slate-400 font-semibold">No ${showingArchived ? 'archived' : 'active'} habit stacks found.</p>
-            <button onclick="${showingArchived ? 'toggleArchiveView()' : 'openStackModal()'}" class="mt-3 px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold min-h-[44px]">
-              ${showingArchived ? 'View Active Stacks' : 'Create First Stack'}
-            </button>
-          </div>
-        `;
-        return;
-      }
-
-      const todayStr = new Date().toISOString().split('T')[0];
-      const todayCompletions = appData.history[todayStr] || [];
-
-      filteredStacks.forEach(stack => {
-        const stackEl = document.createElement('div');
-        stackEl.className = "glass-card rounded-2xl border border-slate-800 overflow-hidden shadow-xl";
-
-        const habits = stack.habits.filter(h => !!h.archived === showingArchived);
-        const totalCount = habits.length;
-        const doneCount = habits.filter(h => todayCompletions.includes(h.id)).length;
-        const percent = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
-
-        stackEl.innerHTML = `
-          <!-- Stack Header -->
-          <div class="p-3 bg-slate-900/80 border-b border-slate-800/80 flex items-center justify-between gap-2 stack-card-padding">
-            <div class="flex items-center gap-2 overflow-hidden">
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-brand-400 border border-slate-700/60 whitespace-nowrap">${stack.category}</span>
-              <h3 class="font-bold text-white text-xs sm:text-sm truncate">${escapeHtml(stack.title)}</h3>
-            </div>
-            
-            <div class="flex items-center gap-1">
-              ${habits.length > 0 && !showingArchived ? `
-                <button onclick="launchFocusMode('${stack.id}')" class="px-2.5 py-1.5 bg-brand-600/20 hover:bg-brand-600/30 text-brand-400 border border-brand-500/30 rounded-xl text-xs font-bold flex items-center gap-1 min-h-[40px]">
-                  <i class="fa-solid fa-play text-[10px]"></i> Focus
-                </button>
-              ` : ''}
-              
-              <button onclick="openStackModal('${stack.id}')" class="p-2 min-h-[40px] min-w-[40px] text-slate-400 hover:text-white rounded-lg">
-                <i class="fa-solid fa-pen text-xs"></i>
-              </button>
-              <button onclick="toggleArchiveStack('${stack.id}')" class="p-2 min-h-[40px] min-w-[40px] text-slate-400 hover:text-amber-400 rounded-lg">
-                <i class="fa-solid fa-box-archive text-xs"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- Progress Bar -->
-          <div class="w-full bg-slate-950 h-1">
-            <div class="bg-gradient-to-r from-brand-600 to-teal-400 h-1 transition-all duration-300" style="width: ${percent}%"></div>
-          </div>
-
-          <!-- Habit Items with Hidden Swipe Layer -->
-          <div class="divide-y divide-slate-800/60">
-            ${habits.length === 0 ? `
-              <div class="p-4 text-center text-xs text-slate-500">
-                No tasks in this stack yet.
-              </div>
-            ` : habits.map(habit => {
-              const isDone = todayCompletions.includes(habit.id);
-              return `
-                <div class="swipe-wrapper" id="swipe-${habit.id}">
-                  <!-- HIDDEN ACTION LAYER (REVEALED ON SWIPE) -->
-                  <div class="swipe-actions-layer">
-                    <button onclick="openHabitModal('${stack.id}', '${habit.id}')" class="h-full px-4 bg-indigo-600 text-white text-xs font-bold flex items-center justify-center gap-1">
-                      <i class="fa-solid fa-pen"></i> Edit
-                    </button>
-                    <button onclick="toggleArchiveHabit('${stack.id}', '${habit.id}')" class="h-full px-4 bg-amber-600 text-white text-xs font-bold flex items-center justify-center gap-1">
-                      <i class="fa-solid fa-box-archive"></i>
-                    </button>
-                    <button onclick="deleteHabit('${stack.id}', '${habit.id}')" class="h-full px-4 bg-rose-600 text-white text-xs font-bold flex items-center justify-center gap-1">
-                      <i class="fa-solid fa-trash"></i>
-                    </button>
-                  </div>
-
-                  <!-- MAIN CARD CONTENT -->
-                  <div class="swipe-card-content p-2.5 sm:p-3 flex items-center justify-between gap-2 stack-card-padding">
-                    <div class="flex items-center gap-2.5 overflow-hidden">
-                      <button onclick="toggleHabitComplete('${habit.id}')" class="w-7 h-7 rounded-lg border min-h-[38px] min-w-[38px] flex items-center justify-center transition shrink-0 ${
-                        isDone ? 'bg-brand-600 border-brand-500 text-white' : 'border-slate-700 bg-slate-900/50 text-transparent hover:border-brand-500'
-                      }">
-                        <i class="fa-solid fa-check text-xs ${isDone ? 'opacity-100' : 'opacity-0'}"></i>
-                      </button>
-
-                      <div class="habit-icon-box w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-sm shrink-0">
-                        ${habit.customIcon ? 
-                          `<img src="${habit.customIcon}" class="w-full h-full object-cover rounded-lg">` : 
-                          `<span>${habit.icon || '✨'}</span>`
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Habit Stacker PWA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        dark: {
+                            bg: '#0a0d14',
+                            card: '#121824',
+                            border: '#1f293d',
+                            hover: '#1a2333',
+                            accent: '#6366f1'
                         }
-                      </div>
-
-                      <div class="min-w-0">
-                        <h4 class="text-xs sm:text-sm font-semibold text-white truncate ${isDone ? 'line-through text-slate-400' : ''}">
-                          ${escapeHtml(habit.title)}
-                        </h4>
-                        ${habit.workout ? `<span class="text-[10px] text-accent-400 font-medium">💪 ${escapeHtml(habit.workout)}</span>` : ''}
-                        ${habit.cue ? `<p class="habit-cue-text text-[10px] text-slate-400 truncate">⚡ ${escapeHtml(habit.cue)}</p>` : ''}
-                      </div>
-                    </div>
-
-                    <div class="flex items-center gap-1.5 shrink-0">
-                      <span class="text-[10px] font-mono bg-slate-900 border border-slate-800 text-slate-300 px-2 py-0.5 rounded-full">
-                        ⏱️ ${habit.duration}m
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-
-          <!-- Stack Add Task Button -->
-          ${!showingArchived ? `
-            <div class="p-2 bg-slate-900/40 border-t border-slate-800/60 text-center">
-              <button onclick="openHabitModal('${stack.id}')" class="w-full py-1.5 min-h-[40px] text-xs font-semibold text-brand-400 hover:text-brand-300 flex items-center justify-center gap-1">
-                <i class="fa-solid fa-plus text-[10px]"></i> Add Task
-              </button>
-            </div>
-          ` : ''}
-        `;
-
-        container.appendChild(stackEl);
-      });
-
-      initSwipeGestures();
-    }
-
-    // SWIPE GESTURE ENGINE (HIDDEN ACTIONS UNTIL SWIPED)
-    function initSwipeGestures() {
-      const wrappers = document.querySelectorAll('.swipe-wrapper');
-
-      wrappers.forEach(wrapper => {
-        const card = wrapper.querySelector('.swipe-card-content');
-        let startX = 0;
-        let currentX = 0;
-        let isDragging = false;
-
-        const onTouchStart = (e) => {
-          startX = e.touches ? e.touches[0].clientX : e.clientX;
-          isDragging = true;
-          card.style.transition = 'none';
-        };
-
-        const onTouchMove = (e) => {
-          if (!isDragging) return;
-          const x = e.touches ? e.touches[0].clientX : e.clientX;
-          const diffX = x - startX;
-
-          // Restrict left swipe maximum
-          if (diffX < 0 && diffX > -160) {
-            currentX = diffX;
-            card.style.transform = `translateX(${currentX}px)`;
-          }
-        };
-
-        const onTouchEnd = () => {
-          if (!isDragging) return;
-          isDragging = false;
-          card.style.transition = 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)';
-
-          if (currentX < -60) {
-            // Open actions layer
-            card.style.transform = 'translateX(-140px)';
-          } else {
-            // Snap back hidden
-            card.style.transform = 'translateX(0px)';
-          }
-          currentX = 0;
-        };
-
-        card.addEventListener('touchstart', onTouchStart, { passive: true });
-        card.addEventListener('touchmove', onTouchMove, { passive: true });
-        card.addEventListener('touchend', onTouchEnd);
-
-        card.addEventListener('mousedown', onTouchStart);
-        window.addEventListener('mousemove', (e) => { if (isDragging) onTouchMove(e); });
-        window.addEventListener('mouseup', () => { if (isDragging) onTouchEnd(); });
-      });
-    }
-
-    // STACK MODAL & ACTIONS
-    function openStackModal(stackId = null) {
-      const modal = document.getElementById('stackModal');
-      const title = document.getElementById('stackModalTitle');
-      const idInput = document.getElementById('stackIdInput');
-      const titleInput = document.getElementById('stackTitleInput');
-      const categoryInput = document.getElementById('stackCategoryInput');
-
-      if (stackId) {
-        const stack = appData.stacks.find(s => s.id === stackId);
-        if (stack) {
-          title.innerText = 'Edit Stack';
-          idInput.value = stack.id;
-          titleInput.value = stack.title;
-          categoryInput.value = stack.category;
+                    }
+                }
+            }
         }
-      } else {
-        title.innerText = 'Create Habit Stack';
-        idInput.value = '';
-        titleInput.value = '';
-        categoryInput.value = '🌅 Morning';
-      }
+    </script>
 
-      modal.classList.remove('hidden');
-    }
-
-    function closeStackModal() {
-      document.getElementById('stackModal').classList.add('hidden');
-    }
-
-    function handleSaveStack(e) {
-      e.preventDefault();
-      const id = document.getElementById('stackIdInput').value;
-      const title = document.getElementById('stackTitleInput').value.trim();
-      const category = document.getElementById('stackCategoryInput').value;
-
-      if (id) {
-        const stack = appData.stacks.find(s => s.id === id);
-        if (stack) {
-          stack.title = title;
-          stack.category = category;
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
-      } else {
-        appData.stacks.push({
-          id: 'stack_' + Date.now(),
-          title,
-          category,
-          archived: false,
-          habits: []
-        });
-      }
 
-      saveAppData();
-      closeStackModal();
-      renderApp();
-    }
-
-    function toggleArchiveStack(stackId) {
-      const stack = appData.stacks.find(s => s.id === stackId);
-      if (stack) {
-        stack.archived = !stack.archived;
-        saveAppData();
-        renderApp();
-      }
-    }
-
-    // HABIT MODAL & ACTIONS
-    function openHabitModal(stackId, habitId = null) {
-      const modal = document.getElementById('habitModal');
-      const title = document.getElementById('habitModalTitle');
-      const stackIdInput = document.getElementById('habitStackIdInput');
-      const habitIdInput = document.getElementById('habitIdInput');
-      const titleInput = document.getElementById('habitTitleInput');
-      const selectIcon = document.getElementById('habitIconSelect');
-      const durationInput = document.getElementById('habitDurationInput');
-      const workoutInput = document.getElementById('habitWorkoutInput');
-      const cueInput = document.getElementById('habitCueInput');
-
-      stackIdInput.value = stackId;
-      customImageBase64 = null;
-
-      if (habitId) {
-        const stack = appData.stacks.find(s => s.id === stackId);
-        const habit = stack ? stack.habits.find(h => h.id === habitId) : null;
-        if (habit) {
-          title.innerText = 'Edit Task';
-          habitIdInput.value = habit.id;
-          titleInput.value = habit.title;
-          durationInput.value = habit.duration || 5;
-          workoutInput.value = habit.workout || '';
-          cueInput.value = habit.cue || '';
-
-          if (habit.customIcon) {
-            selectIcon.value = 'custom';
-            customImageBase64 = habit.customIcon;
-            manualIconSelect('custom');
-          } else {
-            selectIcon.value = habit.icon || 'auto';
-            manualIconSelect(habit.icon || 'auto');
-          }
+        body {
+            background-color: #07090e;
+            color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
         }
-      } else {
-        title.innerText = 'Add Task to Stack';
-        habitIdInput.value = '';
-        titleInput.value = '';
-        durationInput.value = 5;
-        workoutInput.value = '';
-        cueInput.value = '';
-        selectIcon.value = 'auto';
-        manualIconSelect('auto');
-      }
 
-      modal.classList.remove('hidden');
-    }
-
-    function closeHabitModal() {
-      document.getElementById('habitModal').classList.add('hidden');
-    }
-
-    function handleSaveHabit(e) {
-      e.preventDefault();
-      const stackId = document.getElementById('habitStackIdInput').value;
-      const habitId = document.getElementById('habitIdInput').value;
-      const title = document.getElementById('habitTitleInput').value.trim();
-      const selectIconVal = document.getElementById('habitIconSelect').value;
-      const duration = parseInt(document.getElementById('habitDurationInput').value, 10) || 5;
-      const workout = document.getElementById('habitWorkoutInput').value.trim();
-      const cue = document.getElementById('habitCueInput').value.trim();
-
-      const stack = appData.stacks.find(s => s.id === stackId);
-      if (!stack) return;
-
-      let finalIcon = '✨';
-      let customIcon = null;
-
-      if (selectIconVal === 'auto') {
-        finalIcon = detectIconForTitle(title);
-      } else if (selectIconVal === 'custom') {
-        customIcon = customImageBase64;
-      } else {
-        finalIcon = selectIconVal;
-      }
-
-      if (habitId) {
-        const habit = stack.habits.find(h => h.id === habitId);
-        if (habit) {
-          habit.title = title;
-          habit.icon = finalIcon;
-          habit.customIcon = customIcon;
-          habit.duration = duration;
-          habit.workout = workout;
-          habit.cue = cue;
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
         }
-      } else {
-        stack.habits.push({
-          id: 'habit_' + Date.now(),
-          title,
-          icon: finalIcon,
-          customIcon,
-          duration,
-          workout,
-          cue,
-          archived: false
-        });
-      }
-
-      saveAppData();
-      closeHabitModal();
-      renderApp();
-    }
-
-    function toggleHabitComplete(habitId) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      if (!appData.history[todayStr]) {
-        appData.history[todayStr] = [];
-      }
-
-      const list = appData.history[todayStr];
-      const index = list.indexOf(habitId);
-
-      if (index > -1) {
-        list.splice(index, 1);
-      } else {
-        list.push(habitId);
-        playChimeSound();
-      }
-
-      saveAppData();
-      renderApp();
-    }
-
-    function toggleArchiveHabit(stackId, habitId) {
-      const stack = appData.stacks.find(s => s.id === stackId);
-      if (stack) {
-        const habit = stack.habits.find(h => h.id === habitId);
-        if (habit) {
-          habit.archived = !habit.archived;
-          saveAppData();
-          renderApp();
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
         }
-      }
-    }
-
-    function deleteHabit(stackId, habitId) {
-      const stack = appData.stacks.find(s => s.id === stackId);
-      if (stack) {
-        stack.habits = stack.habits.filter(h => h.id !== habitId);
-        saveAppData();
-        renderApp();
-      }
-    }
-
-    function toggleArchiveView() {
-      showingArchived = !showingArchived;
-      const banner = document.getElementById('archiveBanner');
-      if (showingArchived) {
-        banner.classList.remove('hidden');
-      } else {
-        banner.classList.add('hidden');
-      }
-      renderApp();
-    }
-
-    // FOCUS MODE & AMBIENT ANIMATION
-    function launchFocusMode(stackId) {
-      const stack = appData.stacks.find(s => s.id === stackId);
-      if (!stack || stack.habits.length === 0) return;
-
-      currentFocusStack = stack;
-      currentFocusIndex = 0;
-
-      document.getElementById('focusOverlay').classList.remove('hidden');
-      renderFocusHabit();
-    }
-
-    function renderFocusHabit() {
-      if (!currentFocusStack) return;
-      const habit = currentFocusStack.habits[currentFocusIndex];
-      if (!habit) return;
-
-      document.getElementById('focusHabitTitle').innerText = habit.title;
-      document.getElementById('focusCueText').innerText = habit.cue ? `Anchor: ${habit.cue}` : `Stack: ${currentFocusStack.title}`;
-
-      const workoutBadge = document.getElementById('focusWorkoutBadge');
-      if (habit.workout) {
-        workoutBadge.innerText = `💪 ${habit.workout}`;
-        workoutBadge.classList.remove('hidden');
-      } else {
-        workoutBadge.classList.add('hidden');
-      }
-
-      const iconBox = document.getElementById('focusIconBox');
-      if (habit.customIcon) {
-        iconBox.innerHTML = `<img src="${habit.customIcon}" class="w-full h-full object-cover rounded-2xl">`;
-      } else {
-        iconBox.innerHTML = `<span>${habit.icon || '✨'}</span>`;
-      }
-
-      timerSeconds = (habit.duration || 5) * 60;
-      updateTimerDisplay();
-      pauseTimer();
-    }
-
-    function toggleAmbientFX() {
-      appData.ambientFX = !appData.ambientFX;
-      applyAmbientFXState();
-      saveAppData();
-    }
-
-    function applyAmbientFXState() {
-      const overlay = document.getElementById('focusOverlay');
-      const statusText = document.getElementById('ambientStatusText');
-
-      if (appData.ambientFX) {
-        overlay.classList.remove('paused-anim');
-        statusText.innerText = 'ON';
-        statusText.className = 'text-brand-400 font-bold';
-      } else {
-        overlay.classList.add('paused-anim');
-        statusText.innerText = 'OFF';
-        statusText.className = 'text-slate-500 font-bold';
-      }
-    }
-
-    function navigateFocus(direction) {
-      if (!currentFocusStack) return;
-      const nextIdx = currentFocusIndex + direction;
-      if (nextIdx >= 0 && nextIdx < currentFocusStack.habits.length) {
-        currentFocusIndex = nextIdx;
-        renderFocusHabit();
-      }
-    }
-
-    function completeCurrentFocusHabit() {
-      if (!currentFocusStack) return;
-      const habit = currentFocusStack.habits[currentFocusIndex];
-      if (habit) {
-        toggleHabitComplete(habit.id);
-      }
-      if (currentFocusIndex < currentFocusStack.habits.length - 1) {
-        navigateFocus(1);
-      } else {
-        exitFocusMode();
-      }
-    }
-
-    function exitFocusMode() {
-      pauseTimer();
-      document.getElementById('focusOverlay').classList.add('hidden');
-    }
-
-    // TIMER CONTROLLER
-    function toggleTimer() {
-      if (isTimerRunning) {
-        pauseTimer();
-      } else {
-        startTimer();
-      }
-    }
-
-    function startTimer() {
-      if (isTimerRunning) return;
-      isTimerRunning = true;
-      document.getElementById('focusStartBtn').innerHTML = '<i class="fa-solid fa-pause text-xs"></i> <span>Pause</span>';
-
-      timerInterval = setInterval(() => {
-        if (timerSeconds > 0) {
-          timerSeconds--;
-          updateTimerDisplay();
-        } else {
-          pauseTimer();
-          playChimeSound();
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.4);
+            border-radius: 4px;
         }
-      }, 1000);
-    }
-
-    function pauseTimer() {
-      isTimerRunning = false;
-      clearInterval(timerInterval);
-      document.getElementById('focusStartBtn').innerHTML = '<i class="fa-solid fa-play text-xs"></i> <span>Start Timer</span>';
-    }
-
-    function resetTimer() {
-      pauseTimer();
-      if (currentFocusStack && currentFocusStack.habits[currentFocusIndex]) {
-        timerSeconds = (currentFocusStack.habits[currentFocusIndex].duration || 5) * 60;
-      }
-      updateTimerDisplay();
-    }
-
-    function updateTimerDisplay() {
-      const mins = Math.floor(timerSeconds / 60);
-      const secs = timerSeconds % 60;
-      document.getElementById('focusTimerDisplay').innerText = 
-        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    }
-
-    // STATS & HISTORY FEED
-    function renderStats() {
-      let totalCount = 0;
-      const timeline = document.getElementById('historyTimeline');
-      timeline.innerHTML = '';
-
-      Object.keys(appData.history).sort().reverse().forEach(dateStr => {
-        const habitIds = appData.history[dateStr];
-        totalCount += habitIds.length;
-
-        if (habitIds.length > 0) {
-          const item = document.createElement('div');
-          item.className = 'p-2.5 bg-slate-900/80 rounded-xl border border-slate-800 text-xs flex justify-between items-center';
-          item.innerHTML = `
-            <div>
-              <span class="font-bold text-slate-200">${dateStr}</span>
-              <p class="text-[10px] text-slate-400">${habitIds.length} tasks completed</p>
-            </div>
-            <span class="px-2 py-1 bg-brand-500/15 text-brand-400 rounded-full font-mono text-[10px] font-bold">Done</span>
-          `;
-          timeline.appendChild(item);
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.8);
         }
-      });
 
-      document.getElementById('totalHabitsStat').innerText = totalCount;
-      document.getElementById('activeStreakStat').innerText = `${document.getElementById('streakCount').innerText} Days`;
-      document.getElementById('totalCompletionsCount').innerText = `${totalCount} Total Logged`;
-    }
+        /* Dynamic Text Scaling Classes based on setting */
+        .text-scale-xs { font-size: 11px !important; }
+        .text-scale-sm { font-size: 13px !important; }
+        .text-scale-md { font-size: 15px !important; }
+        .text-scale-lg { font-size: 18px !important; }
+        .text-scale-xl { font-size: 22px !important; }
 
-    // WEB AUDIO SYNTHESIZER CHIME
-    function playChimeSound() {
-      try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        /* Glassmorphic Effects */
+        .glass-panel {
+            background: rgba(18, 24, 36, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* 2-Inch Screen Ultra-Compact Display Mode Override */
+        body.micro-2in #app-viewport {
+            max-width: 240px !important;
+            min-width: 240px !important;
+            padding: 4px !important;
+            margin: 0 auto !important;
+        }
+        body.micro-2in .micro-hide {
+            display: none !important;
+        }
+        body.micro-2in .micro-compact {
+            padding: 4px 6px !important;
+            gap: 4px !important;
+        }
+        body.micro-2in .micro-text {
+            font-size: 10px !important;
+        }
+
+        /* Swipe Card Animations and Touch Mechanics */
+        .swipe-card {
+            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s;
+            will-change: transform;
+            position: relative;
+            z-index: 2;
+        }
+
+        .swipe-card.dragging {
+            transition: none;
+        }
+
+        .swipe-bg-left, .swipe-bg-right {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            border-radius: 0.75rem;
+            z-index: 1;
+        }
+
+        .swipe-bg-right {
+            left: 0;
+            justify-content: flex-start;
+        }
+
+        .swipe-bg-left {
+            right: 0;
+            justify-content: flex-end;
+        }
+
+        /* Drag and Drop Visual Hints */
+        .sortable-ghost {
+            opacity: 0.3;
+            transform: scale(0.98);
+        }
+
+        .sortable-chosen {
+            border: 1px solid #6366f1 !important;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4) !important;
+        }
+
+        /* Custom Animations */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+        .pulse-streak {
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-[#07090e] text-gray-100 min-h-screen flex flex-col items-center justify-start antialiased selection:bg-indigo-500 selection:text-white">
+
+    <div id="app-viewport" class="w-full max-w-md min-h-screen flex flex-col transition-all duration-300 relative pb-12">
         
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+        <!-- HEADER TOP BAR -->
+        <header class="sticky top-0 z-30 glass-panel border-b border-gray-800/80 px-4 py-3 flex items-center justify-between mb-3 shadow-lg">
+            <!-- Upper Left: Streak Badge (Clickable for History & Streaks) -->
+            <button id="btn-streak-trigger" onclick="openModal('modal-history')" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 hover:border-amber-500/60 transition group active:scale-95">
+                <span class="text-amber-500 text-base group-hover:scale-125 transition-transform duration-200 pulse-streak">🔥</span>
+                <span id="header-streak-count" class="font-bold text-xs tracking-wide text-amber-300">0d Streak</span>
+            </button>
 
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-        osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.3); // G5
+            <!-- Center App Title / Dynamic Stack Title -->
+            <div class="text-center">
+                <h1 id="app-header-title" class="text-sm font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400 tracking-wider uppercase">
+                    HABIT STACK
+                </h1>
+            </div>
 
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+            <!-- Upper Right: History & Settings Icons -->
+            <div class="flex items-center gap-1.5">
+                <button onclick="openModal('modal-history')" title="History & Analytics" class="w-8 h-8 rounded-full flex items-center justify-center bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/50 transition active:scale-95">
+                    <i class="fa-solid fa-clock-rotate-left text-xs"></i>
+                </button>
+                <button onclick="openModal('modal-settings')" title="Settings" class="w-8 h-8 rounded-full flex items-center justify-center bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/50 transition active:scale-95">
+                    <i class="fa-solid fa-gear text-xs"></i>
+                </button>
+            </div>
+        </header>
 
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+        <!-- STACK SWITCHER BAR -->
+        <section class="px-3 mb-3">
+            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1" id="stack-tabs-container">
+                <!-- Icon-Only "All Stacks" Button -->
+                <button id="tab-all-stacks" onclick="switchStack('ALL')" class="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 border border-indigo-400/30 active:scale-95">
+                    <i class="fa-solid fa-layer-group text-sm"></i>
+                </button>
+                
+                <!-- Dynamic Stacks Tab Bar injected here -->
+                <div id="dynamic-stack-tabs" class="flex items-center gap-2"></div>
 
-        osc.start();
-        osc.stop(ctx.currentTime + 0.7);
-      } catch(e) {
-        console.log("Audio blocked by browser policy");
-      }
-    }
+                <!-- Add New Stack Quick Button -->
+                <button onclick="openModal('modal-add-stack')" class="flex-shrink-0 w-8 h-8 rounded-xl bg-gray-800/60 hover:bg-gray-700 border border-gray-700/60 flex items-center justify-center text-gray-400 hover:text-indigo-400 transition active:scale-95">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                </button>
+            </div>
+        </section>
 
-    // HELPERS & DEMO DATA
-    function escapeHtml(str) {
-      if (!str) return '';
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
+        <!-- MAIN DASHBOARD CONTENT AREA -->
+        <main class="flex-1 px-3 space-y-3">
 
-    function loadDemoData() {
-      appData = {
-        microMode: false,
-        ambientFX: true,
-        history: {},
-        stacks: [
-          {
-            id: 'demo_1',
-            title: 'Morning Glow Stack',
-            category: '🌅 Morning',
-            archived: false,
-            habits: [
-              { id: 'h1', title: 'Hydrate with lemon water', icon: '💧', duration: 2, cue: 'After stepping out of bed', archived: false },
-              { id: 'h2', title: 'Mindful breathwork meditation', icon: '🧘', duration: 10, cue: 'Right after water', archived: false },
-              { id: 'h3', title: 'Read 10 pages', icon: '📚', duration: 15, cue: 'After meditation', archived: false }
-            ]
-          },
-          {
-            id: 'demo_2',
-            title: 'Leg Day Workout',
-            category: '💪 Workout',
-            archived: false,
-            habits: [
-              { id: 'h4', title: 'Barbell Squats', icon: '🏋️', duration: 15, workout: '4 Sets x 10 Reps', cue: 'At gym', archived: false },
-              { id: 'h5', title: 'Walking Lunges', icon: '🏃', duration: 10, workout: '3 Sets x 12 Reps', cue: 'After squats', archived: false }
-            ]
-          }
-        ]
-      };
+            <!-- "ALL STACKS" OVERVIEW GRID (Shown when 'ALL' Stack active) -->
+            <div id="all-stacks-overview-view" class="hidden space-y-3">
+                <div class="flex items-center justify-between px-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Stack Dashboards</span>
+                    <button onclick="openModal('modal-add-stack')" class="text-xs text-indigo-400 font-medium hover:underline flex items-center gap-1">
+                        <i class="fa-solid fa-plus text-[10px]"></i> New Stack
+                    </button>
+                </div>
+                <div id="stacks-grid-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Stacks render here -->
+                </div>
+            </div>
 
-      const today = new Date();
-      for (let i = 0; i < 3; i++) {
-        const d = new Date();
-        d.setDate(today.getDate() - i);
-        appData.history[d.toISOString().split('T')[0]] = ['h1', 'h2'];
-      }
+            <!-- ACTIVE STACK HABITS VIEW (Shown when a specific stack is active) -->
+            <div id="active-stack-habits-view" class="space-y-3">
+                <!-- Stack Progress Banner & Focus Mode Controls -->
+                <div id="stack-header-banner" class="glass-card rounded-2xl p-3 border border-gray-800/80 flex flex-col gap-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span id="stack-banner-icon" class="text-lg">⚡</span>
+                            <div>
+                                <h2 id="stack-banner-title" class="font-bold text-sm tracking-wide">Morning Stack</h2>
+                                <p id="stack-banner-subtitle" class="text-[10px] text-gray-400">0 of 0 completed</p>
+                            </div>
+                        </div>
+                        <button id="btn-focus-mode" onclick="toggleFocusMode()" class="px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-medium hover:bg-indigo-500/20 transition flex items-center gap-1.5 active:scale-95">
+                            <i class="fa-solid fa-bullseye text-xs text-indigo-400"></i>
+                            <span>Focus</span>
+                        </button>
+                    </div>
 
-      saveAppData();
-      renderApp();
-    }
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-gray-800/80 h-2 rounded-full overflow-hidden p-0.5 border border-gray-700/40">
+                        <div id="stack-progress-bar" class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
 
-    function confirmClearAll() {
-      if (window.confirm("Reset all stacks and clear data?")) {
-        appData = { stacks: [], history: {}, microMode: false, ambientFX: true };
-        saveAppData();
-        renderApp();
-      }
-    }
+                <!-- FOCUS MODE BANNER (When Active) -->
+                <div id="focus-mode-banner" class="hidden glass-card border-indigo-500/40 bg-indigo-950/20 rounded-2xl p-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="relative flex h-3 w-3">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                        </span>
+                        <span class="text-xs font-bold text-indigo-300">Focus Mode Engaged</span>
+                    </div>
+                    <button onclick="toggleFocusMode()" class="text-xs text-gray-400 hover:text-white px-2 py-0.5 rounded bg-gray-800 border border-gray-700">Exit</button>
+                </div>
 
-    window.onload = function() {
-      loadAppData();
-    };
-  </script>
+                <!-- HABITS CARDS LIST CONTAINER -->
+                <div id="habits-list-container" class="space-y-2.5 min-h-[180px]">
+                    <!-- Dynamic Habits Rendered Here -->
+                </div>
+
+                <!-- EMPTY STATE GUIDANCE -->
+                <div id="empty-state-container" class="hidden glass-card rounded-2xl p-6 text-center space-y-3 border border-dashed border-gray-800">
+                    <div class="w-12 h-12 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mx-auto text-indigo-400 text-xl">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-200">No Habits in this Stack</h3>
+                        <p class="text-xs text-gray-400 mt-1 max-w-xs mx-auto">Build routines step-by-step. Long-press any habit to reorder naturally.</p>
+                    </div>
+                    <button onclick="openModal('modal-add-habit')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/30 transition active:scale-95 inline-flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> Add First Habit
+                    </button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- FLOATING ADD BUTTON -->
+        <div id="floating-add-btn" class="fixed bottom-5 right-5 z-20">
+            <button onclick="openModal('modal-add-habit')" class="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-xl shadow-indigo-600/40 hover:scale-105 border border-indigo-400/40 transition active:scale-95">
+                <i class="fa-solid fa-plus text-lg"></i>
+            </button>
+        </div>
+
+        <!-- UNDO TOAST NOTIFICATION -->
+        <div id="undo-toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 glass-panel border border-indigo-500/40 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 translate-y-10 pointer-events-none">
+            <span id="undo-toast-text" class="text-xs text-gray-200">Habit deleted</span>
+            <button onclick="triggerUndo()" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/30">Undo</button>
+        </div>
+
+    </div>
+
+
+    <!-- MODAL: SETTINGS -->
+    <div id="modal-settings" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-2xl p-5 space-y-4 border border-gray-800 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-indigo-400 text-sm"></i>
+                    <h3 class="font-bold text-sm">App Settings</h3>
+                </div>
+                <button onclick="closeModal('modal-settings')" class="text-gray-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <!-- 2-Inch Screen Display Toggle -->
+                <div class="flex items-center justify-between p-3 rounded-xl bg-gray-900/60 border border-gray-800">
+                    <div>
+                        <div class="text-xs font-bold text-gray-200">2-Inch Screen Mode</div>
+                        <div class="text-[10px] text-gray-400">Optimize compact layout for micro screens (240px cap)</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="setting-micro-screen" class="sr-only peer" onchange="toggleMicroScreenSetting(this.checked)">
+                        <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
+                <!-- Text Size Scale Setting -->
+                <div class="p-3 rounded-xl bg-gray-900/60 border border-gray-800 space-y-2">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-bold text-gray-200">Text & Element Size</label>
+                        <span id="text-size-label" class="text-xs text-indigo-400 font-mono">Medium (15px)</span>
+                    </div>
+                    <input type="range" id="setting-text-scale" min="1" max="5" value="3" step="1" oninput="updateTextScaleSetting(this.value)" class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                    <div class="flex justify-between text-[9px] text-gray-500 font-mono">
+                        <span>XS</span>
+                        <span>SM</span>
+                        <span>MD</span>
+                        <span>LG</span>
+                        <span>XL</span>
+                    </div>
+                </div>
+
+                <!-- Customizable Swipe Gestures -->
+                <div class="p-3 rounded-xl bg-gray-900/60 border border-gray-800 space-y-3">
+                    <div class="text-xs font-bold text-gray-200 border-b border-gray-800/80 pb-1.5">Customizable Swipe Actions</div>
+                    
+                    <div class="space-y-1">
+                        <label class="text-[11px] text-gray-400">Swipe Right Action (Left → Right)</label>
+                        <select id="setting-swipe-right" onchange="updateSwipeSetting('right', this.value)" class="w-full bg-gray-800 border border-gray-700 rounded-lg text-xs p-2 text-gray-200 focus:outline-none focus:border-indigo-500">
+                            <option value="complete">Complete / Log Entry</option>
+                            <option value="timer">Start Timer / Quick Action</option>
+                            <option value="edit">Edit Habit</option>
+                            <option value="delete">Delete Habit</option>
+                            <option value="none">Disabled</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-[11px] text-gray-400">Swipe Left Action (Right → Left)</label>
+                        <select id="setting-swipe-left" onchange="updateSwipeSetting('left', this.value)" class="w-full bg-gray-800 border border-gray-700 rounded-lg text-xs p-2 text-gray-200 focus:outline-none focus:border-indigo-500">
+                            <option value="edit">Edit Habit</option>
+                            <option value="delete">Delete Habit</option>
+                            <option value="complete">Complete / Log Entry</option>
+                            <option value="timer">Start Timer</option>
+                            <option value="none">Disabled</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Data Management & Backups -->
+                <div class="p-3 rounded-xl bg-gray-900/60 border border-gray-800 space-y-2">
+                    <div class="text-xs font-bold text-gray-200">Data & Backup Management</div>
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <button onclick="exportDataJSON()" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-xs font-medium text-gray-300 flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-download text-indigo-400"></i> Export JSON
+                        </button>
+                        <label class="px-3 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-xs font-medium text-gray-300 flex items-center justify-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-upload text-indigo-400"></i> Import JSON
+                            <input type="file" id="import-file-input" onchange="importDataJSON(event)" accept=".json" class="hidden">
+                        </label>
+                    </div>
+                    <button onclick="copyBackupToClipboard()" class="w-full py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-[11px] text-gray-400 hover:text-gray-200 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-copy"></i> Copy Raw Backup to Clipboard
+                    </button>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button onclick="closeModal('modal-settings')" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition">
+                    Save & Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD / EDIT HABIT -->
+    <div id="modal-add-habit" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-2xl p-5 space-y-4 border border-gray-800 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                <h3 id="modal-habit-title" class="font-bold text-sm">Add New Habit</h3>
+                <button onclick="closeModal('modal-add-habit')" class="text-gray-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <form id="habit-form" onsubmit="handleSaveHabit(event)" class="space-y-3">
+                <input type="hidden" id="edit-habit-id" value="">
+
+                <!-- Habit Name Input -->
+                <div class="space-y-1">
+                    <label class="text-xs font-medium text-gray-300">Habit Name</label>
+                    <input type="text" id="habit-name-input" required placeholder="e.g. Morning Meditation, 20 Pushups" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <!-- Icon Picker -->
+                <div class="space-y-1">
+                    <label class="text-xs font-medium text-gray-300">Choose Icon</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="habit-icon-input" value="⚡" readonly class="w-12 h-10 bg-gray-900 border border-gray-700 rounded-xl text-center text-lg focus:outline-none">
+                        <div id="icon-picker-list" class="flex-1 flex gap-1.5 overflow-x-auto p-1 bg-gray-900/60 border border-gray-800 rounded-xl">
+                            <!-- Popular Icon Choices -->
+                            <button type="button" onclick="selectIcon('🧘')" class="p-2 hover:bg-gray-800 rounded-lg text-sm">🧘</button>
+                            <button type="button" onclick="selectIcon('🏃')" class="p-2 hover:bg-gray-800 rounded-lg text-sm">🏃</button>
+                            <button type="button" onclick="selectIcon('📖')" class="p-2 hover:bg-gray-800 rounded-lg text-sm">📖</button>
+                            <button type="button" onclick="selectIcon('💧')" class="p-2 hover:bg-gray-800 rounded-lg text-sm">💧</button>
+                            <button type="button" onclick="selectIcon('💪')" class="p-2 hover:bg-gray-800 rounded-lg text-sm">💪</button>
+                            <button type="button" onclick="selectIcon('💻')" class="p-2 hover:bg-gray-800 rounded-lg text-sm">💻</button>
+                            <button type="button" onclick="selectIcon('⚡')" class="p-2 hover:bg-gray-800 rounded-lg text-sm">⚡</button>
+                            <button type="button" onclick="selectIcon('🎯')" class="p-2 hover:bg-gray-800 rounded-lg text-sm">🎯</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Habit Type Selector -->
+                <div class="space-y-1">
+                    <label class="text-xs font-medium text-gray-300">Tracking Style</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" id="btn-type-check" onclick="setHabitType('check')" class="p-2 rounded-xl border text-xs font-medium text-center transition border-indigo-500 bg-indigo-500/20 text-indigo-200">
+                            <i class="fa-solid fa-check-circle block mb-1 text-sm"></i> Checkbox
+                        </button>
+                        <button type="button" id="btn-type-timer" onclick="setHabitType('timer')" class="p-2 rounded-xl border text-xs font-medium text-center transition border-gray-800 bg-gray-900 text-gray-400">
+                            <i class="fa-solid fa-stopwatch block mb-1 text-sm"></i> Timer
+                        </button>
+                        <button type="button" id="btn-type-counter" onclick="setHabitType('counter')" class="p-2 rounded-xl border text-xs font-medium text-center transition border-gray-800 bg-gray-900 text-gray-400">
+                            <i class="fa-solid fa-hashtag block mb-1 text-sm"></i> Sets/Reps
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Minute-Based Timer Config (Shown when Type = Timer) -->
+                <div id="habit-timer-config" class="hidden space-y-1">
+                    <label class="text-xs font-medium text-gray-300">Target Duration (Minutes)</label>
+                    <div class="grid grid-cols-5 gap-1.5">
+                        <button type="button" onclick="setTimerMinutes(1)" class="py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs font-mono hover:border-indigo-500">1m</button>
+                        <button type="button" onclick="setTimerMinutes(5)" class="py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs font-mono hover:border-indigo-500">5m</button>
+                        <button type="button" onclick="setTimerMinutes(15)" class="py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs font-mono hover:border-indigo-500">15m</button>
+                        <button type="button" onclick="setTimerMinutes(30)" class="py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs font-mono hover:border-indigo-500">30m</button>
+                        <button type="button" onclick="setTimerMinutes(60)" class="py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs font-mono hover:border-indigo-500">60m</button>
+                    </div>
+                    <input type="number" id="habit-timer-minutes" min="1" max="300" value="15" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white mt-1">
+                </div>
+
+                <!-- Sets/Reps Config (Shown when Type = Counter) -->
+                <div id="habit-counter-config" class="hidden space-y-1">
+                    <label class="text-xs font-medium text-gray-300">Target Target Count / Reps</label>
+                    <input type="number" id="habit-counter-target" min="1" value="10" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white">
+                </div>
+
+                <!-- Target Stack Choice -->
+                <div class="space-y-1">
+                    <label class="text-xs font-medium text-gray-300">Assigned Stack</label>
+                    <select id="habit-stack-select" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+
+                <div class="pt-3">
+                    <button type="submit" class="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition">
+                        Save Habit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD / EDIT STACK -->
+    <div id="modal-add-stack" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-sm rounded-2xl p-5 space-y-4 border border-gray-800 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                <h3 class="font-bold text-sm">Create New Stack</h3>
+                <button onclick="closeModal('modal-add-stack')" class="text-gray-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleSaveStack(event)" class="space-y-3">
+                <div class="space-y-1">
+                    <label class="text-xs font-medium text-gray-300">Stack Name</label>
+                    <input type="text" id="stack-name-input" required placeholder="e.g. Evening Wind Down" class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white">
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-medium text-gray-300">Stack Emoji Icon</label>
+                    <input type="text" id="stack-icon-input" value="🌙" required class="w-full bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-xs text-white text-center">
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg transition">
+                        Create Stack
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: HISTORY & STREAKS LOG -->
+    <div id="modal-history" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-2xl p-5 space-y-4 border border-gray-800 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-gray-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-amber-500 text-base">🔥</span>
+                    <h3 class="font-bold text-sm">Streaks & History Log</h3>
+                </div>
+                <button onclick="closeModal('modal-history')" class="text-gray-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <!-- Streak Stats Header Card -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="glass-card p-3 rounded-xl border border-amber-500/20 text-center">
+                    <div class="text-[10px] uppercase font-bold text-gray-400">Current Streak</div>
+                    <div id="history-current-streak" class="text-xl font-extrabold text-amber-400 mt-0.5">0 Days</div>
+                </div>
+                <div class="glass-card p-3 rounded-xl border border-indigo-500/20 text-center">
+                    <div class="text-[10px] uppercase font-bold text-gray-400">7-Day Completion</div>
+                    <div id="history-7day-rate" class="text-xl font-extrabold text-indigo-400 mt-0.5">0%</div>
+                </div>
+            </div>
+
+            <!-- Recent Log Trail -->
+            <div class="space-y-2">
+                <div class="text-xs font-bold text-gray-300">Activity History</div>
+                <div id="history-logs-list" class="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                    <!-- Dynamic Log Items Injected Here -->
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button onclick="closeModal('modal-history')" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-medium transition">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* APP STATE OBJECT */
+        const DEFAULT_STATE = {
+            stacks: [
+                { id: 'stack-1', name: 'Morning Stack', icon: '🌅', color: '#6366f1' },
+                { id: 'stack-2', name: 'Productivity', icon: '⚡', color: '#8b5cf6' },
+                { id: 'stack-3', name: 'Night Wind-Down', icon: '🌙', color: '#ec4899' }
+            ],
+            habits: [],
+            activeStackId: 'ALL',
+            focusMode: false,
+            streakCount: 0,
+            lastCompletedDate: null,
+            completionLogs: [],
+            settings: {
+                microScreen: false,
+                textScale: 3, // 1 to 5
+                swipeRightAction: 'complete',
+                swipeLeftAction: 'edit'
+            }
+        };
+
+        let appState = JSON.parse(localStorage.getItem('habit_stacker_pwa_data')) || DEFAULT_STATE;
+        let lastDeletedHabit = null; // For Undo Toast
+        let activeTimerIntervals = {}; // Active running timers
+
+        // Helper to save state
+        function saveState() {
+            localStorage.setItem('habit_stacker_pwa_data', JSON.stringify(appState));
+            render();
+        }
+
+        /* INITIALIZATION ON WINDOW LOAD */
+        window.onload = function() {
+            applySettingsOnLoad();
+            calculateStreak();
+            render();
+        };
+
+        function applySettingsOnLoad() {
+            if (appState.settings.microScreen) {
+                document.body.classList.add('micro-2in');
+                const toggle = document.getElementById('setting-micro-screen');
+                if (toggle) toggle.checked = true;
+            }
+            if (appState.settings.textScale) {
+                applyTextScale(appState.settings.textScale);
+                const slider = document.getElementById('setting-text-scale');
+                if (slider) slider.value = appState.settings.textScale;
+            }
+            if (appState.settings.swipeRightAction) {
+                const rightSel = document.getElementById('setting-swipe-right');
+                if (rightSel) rightSel.value = appState.settings.swipeRightAction;
+            }
+            if (appState.settings.swipeLeftAction) {
+                const leftSel = document.getElementById('setting-swipe-left');
+                if (leftSel) leftSel.value = appState.settings.swipeLeftAction;
+            }
+        }
+
+        function render() {
+            renderHeaderStreak();
+            renderStackTabs();
+            renderActiveView();
+            renderHistoryLogs();
+        }
+
+        function renderHeaderStreak() {
+            const el = document.getElementById('header-streak-count');
+            if (el) el.textContent = `${appState.streakCount || 0}d Streak`;
+        }
+
+        function renderStackTabs() {
+            const container = document.getElementById('dynamic-stack-tabs');
+            const allTab = document.getElementById('tab-all-stacks');
+            
+            if (!container || !allTab) return;
+
+            // Highlight All Stacks Tab
+            if (appState.activeStackId === 'ALL') {
+                allTab.className = "flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 border border-indigo-400/30 active:scale-95";
+            } else {
+                allTab.className = "flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all bg-gray-800/80 text-gray-400 border border-gray-700/60 hover:text-white active:scale-95";
+            }
+
+            container.innerHTML = appState.stacks.map(stack => {
+                const isActive = appState.activeStackId === stack.id;
+                const activeClass = isActive 
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 border border-indigo-400/30" 
+                    : "bg-gray-800/80 text-gray-300 border border-gray-700/60 hover:text-white";
+
+                return `
+                    <button onclick="switchStack('${stack.id}')" class="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${activeClass} active:scale-95">
+                        <span>${stack.icon}</span>
+                        <span>${escapeHtml(stack.name)}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function renderActiveView() {
+            const allView = document.getElementById('all-stacks-overview-view');
+            const stackView = document.getElementById('active-stack-habits-view');
+
+            if (appState.activeStackId === 'ALL') {
+                allView.classList.remove('hidden');
+                stackView.classList.add('hidden');
+                renderAllStacksGrid();
+            } else {
+                allView.classList.add('hidden');
+                stackView.classList.remove('hidden');
+                renderActiveStackContent();
+            }
+        }
+
+        function renderAllStacksGrid() {
+            const grid = document.getElementById('stacks-grid-container');
+            if (!grid) return;
+
+            if (appState.stacks.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center text-xs text-gray-500 py-6">No stacks created yet.</div>`;
+                return;
+            }
+
+            grid.innerHTML = appState.stacks.map(stack => {
+                const stackHabits = appState.habits.filter(h => h.stackId === stack.id);
+                const completedCount = stackHabits.filter(h => h.completed).length;
+                const totalCount = stackHabits.length;
+                const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+                return `
+                    <div onclick="switchStack('${stack.id}')" class="glass-card p-4 rounded-2xl border border-gray-800/80 hover:border-indigo-500/40 transition cursor-pointer group relative">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xl">${stack.icon}</span>
+                                <h3 class="font-bold text-sm group-hover:text-indigo-300 transition">${escapeHtml(stack.name)}</h3>
+                            </div>
+                            <span class="text-xs font-mono text-gray-400">${completedCount}/${totalCount}</span>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden mb-3">
+                            <div class="bg-indigo-500 h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                        </div>
+
+                        <div class="flex items-center justify-between text-[11px] text-gray-400">
+                            <span>${pct}% Done</span>
+                            <button onclick="event.stopPropagation(); deleteStack('${stack.id}')" class="text-gray-500 hover:text-red-400 p-1">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderActiveStackContent() {
+            const stack = appState.stacks.find(s => s.id === appState.activeStackId);
+            if (!stack) return;
+
+            // Update Stack Header Banner
+            document.getElementById('stack-banner-icon').textContent = stack.icon;
+            document.getElementById('stack-banner-title').textContent = stack.name;
+
+            const stackHabits = appState.habits.filter(h => h.stackId === stack.id);
+            const completedCount = stackHabits.filter(h => h.completed).length;
+            const totalCount = stackHabits.length;
+            const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+            document.getElementById('stack-banner-subtitle').textContent = `${completedCount} of ${totalCount} completed`;
+            document.getElementById('stack-progress-bar').style.width = `${pct}%`;
+
+            const habitsContainer = document.getElementById('habits-list-container');
+            const emptyState = document.getElementById('empty-state-container');
+
+            if (stackHabits.length === 0) {
+                habitsContainer.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                habitsContainer.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+            }
+
+            // Render Habits List with Touch/Swipe Event Handlers Attached
+            habitsContainer.innerHTML = stackHabits.map((habit, idx) => {
+                const isCompleted = habit.completed;
+                const cardBg = isCompleted ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-gray-900/60 border-gray-800';
+                const opacityClass = isCompleted ? 'opacity-60' : 'opacity-100';
+
+                return `
+                    <div class="relative overflow-hidden rounded-xl border ${cardBg} ${opacityClass} transition-all duration-200">
+                        <!-- Swipe Action Background Left (Revealed when dragging Right) -->
+                        <div class="swipe-bg-right bg-emerald-600 text-white">
+                            <i class="fa-solid fa-check text-base"></i>
+                        </div>
+
+                        <!-- Swipe Action Background Right (Revealed when dragging Left) -->
+                        <div class="swipe-bg-left bg-indigo-600 text-white">
+                            <i class="fa-solid fa-pen-to-square text-base"></i>
+                        </div>
+
+                        <!-- Main Swipeable Card Body -->
+                        <div id="habit-card-${habit.id}" 
+                             data-habit-id="${habit.id}"
+                             class="swipe-card p-3 glass-card flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing"
+                             ontouchstart="handleTouchStart(event, '${habit.id}')"
+                             ontouchmove="handleTouchMove(event, '${habit.id}')"
+                             ontouchend="handleTouchEnd(event, '${habit.id}')"
+                             onmousedown="handleMouseDown(event, '${habit.id}')">
+
+                            <div class="flex items-center gap-3 flex-1 min-w-0">
+                                <span class="text-lg flex-shrink-0">${habit.icon || '⚡'}</span>
+                                <div class="truncate">
+                                    <h4 class="text-xs font-bold ${isCompleted ? 'line-through text-gray-400' : 'text-gray-100'} truncate">${escapeHtml(habit.name)}</h4>
+                                    <div class="text-[10px] text-gray-400 flex items-center gap-1.5 mt-0.5">
+                                        ${getHabitBadgeHTML(habit)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Interactive Habit Action Buttons -->
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                                ${getHabitControlHTML(habit)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getHabitBadgeHTML(habit) {
+            if (habit.type === 'timer') {
+                return `<span class="font-mono text-indigo-400"><i class="fa-solid fa-stopwatch text-[9px] mr-0.5"></i>${habit.timerMinutes || 15}m</span>`;
+            } else if (habit.type === 'counter') {
+                return `<span class="font-mono text-purple-400"><i class="fa-solid fa-hashtag text-[9px] mr-0.5"></i>${habit.counterCurrent || 0}/${habit.counterTarget || 10}</span>`;
+            }
+            return `<span class="text-gray-500"><i class="fa-solid fa-check-circle text-[9px] mr-0.5"></i>Checkbox</span>`;
+        }
+
+        function getHabitControlHTML(habit) {
+            if (habit.type === 'timer') {
+                const isRunning = activeTimerIntervals[habit.id];
+                return `
+                    <button onclick="toggleHabitTimer('${habit.id}')" class="px-2.5 py-1 rounded-lg ${isRunning ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-gray-800 text-indigo-300 border border-gray-700'} text-xs font-mono font-medium flex items-center gap-1 active:scale-95">
+                        <i class="fa-solid ${isRunning ? 'fa-pause' : 'fa-play'} text-[10px]"></i>
+                        <span>${formatSeconds(habit.timerRemaining || (habit.timerMinutes * 60))}</span>
+                    </button>
+                `;
+            } else if (habit.type === 'counter') {
+                return `
+                    <div class="flex items-center gap-1">
+                        <button onclick="incrementCounter('${habit.id}', 1)" class="w-7 h-7 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 flex items-center justify-center border border-gray-700 text-xs active:scale-95">
+                            +1
+                        </button>
+                    </div>
+                `;
+            }
+
+            // Default Checkbox Toggle
+            return `
+                <button onclick="toggleHabitComplete('${habit.id}')" class="w-7 h-7 rounded-lg flex items-center justify-center transition ${habit.completed ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700'} active:scale-95">
+                    <i class="fa-solid fa-check text-xs"></i>
+                </button>
+            `;
+        }
+
+        let touchStartX = 0;
+        let touchCurrentX = 0;
+        let activeSwipeHabitId = null;
+        let longPressTimer = null;
+
+        function handleTouchStart(e, habitId) {
+            touchStartX = e.touches[0].clientX;
+            touchCurrentX = touchStartX;
+            activeSwipeHabitId = habitId;
+
+            // Setup Long Press Delay for Reordering Task
+            longPressTimer = setTimeout(() => {
+                triggerLongPressReorder(habitId);
+            }, 450);
+        }
+
+        function handleTouchMove(e, habitId) {
+            if (!activeSwipeHabitId) return;
+            touchCurrentX = e.touches[0].clientX;
+            const diffX = touchCurrentX - touchStartX;
+
+            if (Math.abs(diffX) > 10) {
+                clearTimeout(longPressTimer); // Cancel long press drag on swipe motion
+            }
+
+            const cardEl = document.getElementById(`habit-card-${habitId}`);
+            if (cardEl) {
+                cardEl.style.transform = `translateX(${diffX}px)`;
+            }
+        }
+
+        function handleTouchEnd(e, habitId) {
+            clearTimeout(longPressTimer);
+            if (!activeSwipeHabitId) return;
+
+            const diffX = touchCurrentX - touchStartX;
+            const cardEl = document.getElementById(`habit-card-${habitId}`);
+
+            if (cardEl) {
+                cardEl.style.transform = 'translateX(0px)';
+            }
+
+            const SWIPE_THRESHOLD = 80;
+            if (diffX > SWIPE_THRESHOLD) {
+                // Swiped Right
+                executeSwipeAction(appState.settings.swipeRightAction || 'complete', habitId);
+            } else if (diffX < -SWIPE_THRESHOLD) {
+                // Swiped Left
+                executeSwipeAction(appState.settings.swipeLeftAction || 'edit', habitId);
+            }
+
+            activeSwipeHabitId = null;
+        }
+
+        function handleMouseDown(e, habitId) {
+            // Long Press handler for Desktop Mouse
+            longPressTimer = setTimeout(() => {
+                triggerLongPressReorder(habitId);
+            }, 450);
+
+            const onMouseUp = () => {
+                clearTimeout(longPressTimer);
+                window.removeEventListener('mouseup', onMouseUp);
+            };
+            window.addEventListener('mouseup', onMouseUp);
+        }
+
+        function triggerLongPressReorder(habitId) {
+            const habit = appState.habits.find(h => h.id === habitId);
+            if (!habit) return;
+            showUndoToast(`Reordering mode active for "${habit.name}"`);
+            if (navigator.vibrate) navigator.vibrate(50);
+        }
+
+        function executeSwipeAction(action, habitId) {
+            if (action === 'complete') {
+                toggleHabitComplete(habitId);
+            } else if (action === 'edit') {
+                editHabit(habitId);
+            } else if (action === 'delete') {
+                deleteHabit(habitId);
+            } else if (action === 'timer') {
+                toggleHabitTimer(habitId);
+            }
+        }
+
+        function toggleHabitComplete(habitId) {
+            const habit = appState.habits.find(h => h.id === habitId);
+            if (!habit) return;
+
+            habit.completed = !habit.completed;
+
+            if (habit.completed) {
+                logCompletion(habit);
+                triggerCelebrationConfetti();
+                
+                // Focus Mode Auto-Advance Logic
+                if (appState.focusMode) {
+                    const currentStackHabits = appState.habits.filter(h => h.stackId === habit.stackId && !h.completed);
+                    if (currentStackHabits.length === 0) {
+                        showUndoToast("🎉 Entire Stack Completed!");
+                    }
+                }
+            }
+
+            checkAndUpdateStreak();
+            saveState();
+        }
+
+        function toggleHabitTimer(habitId) {
+            const habit = appState.habits.find(h => h.id === habitId);
+            if (!habit) return;
+
+            if (activeTimerIntervals[habitId]) {
+                // Pause Timer
+                clearInterval(activeTimerIntervals[habitId]);
+                delete activeTimerIntervals[habitId];
+            } else {
+                // Start Timer
+                if (!habit.timerRemaining) {
+                    habit.timerRemaining = (habit.timerMinutes || 15) * 60;
+                }
+
+                activeTimerIntervals[habitId] = setInterval(() => {
+                    if (habit.timerRemaining > 0) {
+                        habit.timerRemaining--;
+                        renderActiveStackContent();
+                    } else {
+                        clearInterval(activeTimerIntervals[habitId]);
+                        delete activeTimerIntervals[habitId];
+                        habit.completed = true;
+                        logCompletion(habit);
+                        triggerCelebrationConfetti();
+                        saveState();
+                    }
+                }, 1000);
+            }
+            renderActiveStackContent();
+        }
+
+        function incrementCounter(habitId, step) {
+            const habit = appState.habits.find(h => h.id === habitId);
+            if (!habit) return;
+
+            habit.counterCurrent = (habit.counterCurrent || 0) + step;
+            if (habit.counterCurrent >= (habit.counterTarget || 10)) {
+                habit.completed = true;
+                logCompletion(habit);
+                triggerCelebrationConfetti();
+            }
+            saveState();
+        }
+
+        function setTimerMinutes(mins) {
+            document.getElementById('habit-timer-minutes').value = mins;
+        }
+
+        function logCompletion(habit) {
+            const today = new Date().toISOString().split('T')[0];
+            appState.completionLogs.unshift({
+                habitName: habit.name,
+                stackId: habit.stackId,
+                date: today,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+            if (appState.completionLogs.length > 50) appState.completionLogs.pop();
+        }
+
+        function checkAndUpdateStreak() {
+            const today = new Date().toISOString().split('T')[0];
+            if (appState.lastCompletedDate !== today) {
+                appState.streakCount = (appState.streakCount || 0) + 1;
+                appState.lastCompletedDate = today;
+            }
+        }
+
+        function calculateStreak() {
+            // Keep current streak updated
+            renderHeaderStreak();
+        }
+
+        function renderHistoryLogs() {
+            const listEl = document.getElementById('history-logs-list');
+            const streakEl = document.getElementById('history-current-streak');
+            const rateEl = document.getElementById('history-7day-rate');
+
+            if (streakEl) streakEl.textContent = `${appState.streakCount || 0} Days`;
+
+            // Calculate 7 day rate
+            const totalHabits = appState.habits.length;
+            const completedToday = appState.habits.filter(h => h.completed).length;
+            const rate = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
+            if (rateEl) rateEl.textContent = `${rate}%`;
+
+            if (!listEl) return;
+
+            if (!appState.completionLogs || appState.completionLogs.length === 0) {
+                listEl.innerHTML = `<div class="text-xs text-gray-500 text-center py-4">No completed habits logged yet.</div>`;
+                return;
+            }
+
+            listEl.innerHTML = appState.completionLogs.slice(0, 15).map(log => `
+                <div class="flex items-center justify-between p-2 rounded-lg bg-gray-900/60 border border-gray-800/80 text-xs">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-check text-emerald-400 text-[10px]"></i>
+                        <span class="font-medium text-gray-200">${escapeHtml(log.habitName)}</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500 font-mono">${log.time}</span>
+                </div>
+            `).join('');
+        }
+
+        function switchStack(stackId) {
+            appState.activeStackId = stackId;
+            saveState();
+        }
+
+        function toggleFocusMode() {
+            appState.focusMode = !appState.focusMode;
+            const banner = document.getElementById('focus-mode-banner');
+            if (banner) {
+                if (appState.focusMode) banner.classList.remove('hidden');
+                else banner.classList.add('hidden');
+            }
+        }
+
+        function deleteHabit(habitId) {
+            const index = appState.habits.findIndex(h => h.id === habitId);
+            if (index !== -1) {
+                lastDeletedHabit = appState.habits[index];
+                appState.habits.splice(index, 1);
+                showUndoToast(`Deleted "${lastDeletedHabit.name}"`);
+                saveState();
+            }
+        }
+
+        function editHabit(habitId) {
+            const habit = appState.habits.find(h => h.id === habitId);
+            if (!habit) return;
+
+            document.getElementById('edit-habit-id').value = habit.id;
+            document.getElementById('habit-name-input').value = habit.name;
+            document.getElementById('habit-icon-input').value = habit.icon || '⚡';
+            
+            setHabitType(habit.type || 'check');
+            if (habit.type === 'timer') {
+                document.getElementById('habit-timer-minutes').value = habit.timerMinutes || 15;
+            } else if (habit.type === 'counter') {
+                document.getElementById('habit-counter-target').value = habit.counterTarget || 10;
+            }
+
+            populateStackSelect(habit.stackId);
+            openModal('modal-add-habit');
+        }
+
+        function deleteStack(stackId) {
+            appState.stacks = appState.stacks.filter(s => s.id !== stackId);
+            appState.habits = appState.habits.filter(h => h.stackId !== stackId);
+            if (appState.activeStackId === stackId) appState.activeStackId = 'ALL';
+            saveState();
+        }
+
+        function handleSaveHabit(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-habit-id').value;
+            const name = document.getElementById('habit-name-input').value;
+            const icon = document.getElementById('habit-icon-input').value || '⚡';
+            const stackId = document.getElementById('habit-stack-select').value;
+            const timerMins = parseInt(document.getElementById('habit-timer-minutes').value) || 15;
+            const targetCount = parseInt(document.getElementById('habit-counter-target').value) || 10;
+
+            if (editId) {
+                // Update
+                const habit = appState.habits.find(h => h.id === editId);
+                if (habit) {
+                    habit.name = name;
+                    habit.icon = icon;
+                    habit.stackId = stackId;
+                    habit.type = currentHabitType;
+                    habit.timerMinutes = timerMins;
+                    habit.counterTarget = targetCount;
+                }
+            } else {
+                // Create
+                const newHabit = {
+                    id: 'habit-' + Date.now(),
+                    name,
+                    icon,
+                    stackId,
+                    type: currentHabitType,
+                    completed: false,
+                    timerMinutes: timerMins,
+                    timerRemaining: timerMins * 60,
+                    counterCurrent: 0,
+                    counterTarget: targetCount
+                };
+                appState.habits.push(newHabit);
+            }
+
+            closeModal('modal-add-habit');
+            saveState();
+        }
+
+        function handleSaveStack(e) {
+            e.preventDefault();
+            const name = document.getElementById('stack-name-input').value;
+            const icon = document.getElementById('stack-icon-input').value || '📁';
+
+            const newStack = {
+                id: 'stack-' + Date.now(),
+                name,
+                icon,
+                color: '#6366f1'
+            };
+
+            appState.stacks.push(newStack);
+            appState.activeStackId = newStack.id;
+            closeModal('modal-add-stack');
+            saveState();
+        }
+
+        let currentHabitType = 'check';
+
+        function setHabitType(type) {
+            currentHabitType = type;
+            const checkBtn = document.getElementById('btn-type-check');
+            const timerBtn = document.getElementById('btn-type-timer');
+            const counterBtn = document.getElementById('btn-type-counter');
+            
+            const timerCfg = document.getElementById('habit-timer-config');
+            const counterCfg = document.getElementById('habit-counter-config');
+
+            // Reset Styles
+            [checkBtn, timerBtn, counterBtn].forEach(btn => {
+                btn.className = "p-2 rounded-xl border text-xs font-medium text-center transition border-gray-800 bg-gray-900 text-gray-400";
+            });
+
+            if (type === 'check') {
+                checkBtn.className = "p-2 rounded-xl border text-xs font-medium text-center transition border-indigo-500 bg-indigo-500/20 text-indigo-200";
+                timerCfg.classList.add('hidden');
+                counterCfg.classList.add('hidden');
+            } else if (type === 'timer') {
+                timerBtn.className = "p-2 rounded-xl border text-xs font-medium text-center transition border-indigo-500 bg-indigo-500/20 text-indigo-200";
+                timerCfg.classList.remove('hidden');
+                counterCfg.classList.add('hidden');
+            } else if (type === 'counter') {
+                counterBtn.className = "p-2 rounded-xl border text-xs font-medium text-center transition border-indigo-500 bg-indigo-500/20 text-indigo-200";
+                timerCfg.classList.add('hidden');
+                counterCfg.classList.remove('hidden');
+            }
+        }
+
+        function selectIcon(emoji) {
+            document.getElementById('habit-icon-input').value = emoji;
+        }
+
+        function populateStackSelect(selectedId) {
+            const sel = document.getElementById('habit-stack-select');
+            if (!sel) return;
+
+            sel.innerHTML = appState.stacks.map(s => `
+                <option value="${s.id}" ${s.id === selectedId ? 'selected' : ''}>${s.icon} ${escapeHtml(s.name)}</option>
+            `).join('');
+        }
+
+        function toggleMicroScreenSetting(enabled) {
+            appState.settings.microScreen = enabled;
+            if (enabled) {
+                document.body.classList.add('micro-2in');
+            } else {
+                document.body.classList.remove('micro-2in');
+            }
+            saveState();
+        }
+
+        function updateTextScaleSetting(val) {
+            val = parseInt(val);
+            appState.settings.textScale = val;
+            applyTextScale(val);
+            saveState();
+        }
+
+        function applyTextScale(val) {
+            const viewport = document.getElementById('app-viewport');
+            if (!viewport) return;
+
+            viewport.classList.remove('text-scale-xs', 'text-scale-sm', 'text-scale-md', 'text-scale-lg', 'text-scale-xl');
+            
+            const scaleMap = { 1: 'text-scale-xs', 2: 'text-scale-sm', 3: 'text-scale-md', 4: 'text-scale-lg', 5: 'text-scale-xl' };
+            const labelMap = { 1: 'Extra Small (11px)', 2: 'Small (13px)', 3: 'Medium (15px)', 4: 'Large (18px)', 5: 'Extra Large (22px)' };
+
+            viewport.classList.add(scaleMap[val] || 'text-scale-md');
+
+            const lbl = document.getElementById('text-size-label');
+            if (lbl) lbl.textContent = labelMap[val] || 'Medium (15px)';
+        }
+
+        function updateSwipeSetting(direction, val) {
+            if (direction === 'right') appState.settings.swipeRightAction = val;
+            if (direction === 'left') appState.settings.swipeLeftAction = val;
+            saveState();
+        }
+
+        function exportDataJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `habit_stacker_backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        function importDataJSON(event) {
+            const fileReader = new FileReader();
+            fileReader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed && parsed.stacks && parsed.habits) {
+                        appState = parsed;
+                        saveState();
+                        showUndoToast("Data successfully imported!");
+                    }
+                } catch (err) {
+                    showUndoToast("Invalid JSON Backup File");
+                }
+            };
+            fileReader.readAsText(event.target.files[0]);
+        }
+
+        function copyBackupToClipboard() {
+            const text = JSON.stringify(appState);
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+            showUndoToast("Backup copied to clipboard!");
+        }
+
+        function showUndoToast(msg) {
+            const toast = document.getElementById('undo-toast');
+            const textEl = document.getElementById('undo-toast-text');
+            if (!toast || !textEl) return;
+
+            textEl.textContent = msg;
+            toast.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+            }, 3500);
+        }
+
+        function triggerUndo() {
+            if (lastDeletedHabit) {
+                appState.habits.push(lastDeletedHabit);
+                lastDeletedHabit = null;
+                saveState();
+                showUndoToast("Restored habit!");
+            }
+        }
+
+        function triggerCelebrationConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 40,
+                    spread: 60,
+                    origin: { y: 0.8 },
+                    colors: ['#6366f1', '#a855f7', '#ec4899']
+                });
+            }
+        }
+
+        /* UTILITY HELPERS */
+        function openModal(modalId) {
+            if (modalId === 'modal-add-habit') {
+                document.getElementById('edit-habit-id').value = '';
+                document.getElementById('habit-form').reset();
+                populateStackSelect(appState.activeStackId !== 'ALL' ? appState.activeStackId : appState.stacks[0]?.id);
+                setHabitType('check');
+            }
+            const el = document.getElementById(modalId);
+            if (el) el.classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            const el = document.getElementById(modalId);
+            if (el) el.classList.add('hidden');
+        }
+
+        function formatSeconds(totalSec) {
+            const m = Math.floor(totalSec / 60);
+            const s = totalSec % 60;
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+            });
+        }
+    </script>
 </body>
 </html>
