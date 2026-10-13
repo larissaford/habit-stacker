@@ -249,12 +249,41 @@
             animation: pulse-glow 2s infinite ease-in-out;
         }
 
-        /* Focus mode: strip distractions so the active stack takes over the screen */
-        body.focus-active header,
-        body.focus-active #stack-tabs-container,
-        body.focus-active #floating-add-btn { display: none !important; }
-        body.focus-active #app-viewport { padding-top: 8px !important; }
-        body.focus-active .swipe-card.opacity-60 { display: none !important; }
+        /* Full-screen focus overlay: one task fills the entire screen */
+        #focus-overlay {
+            background: radial-gradient(circle at 50% 20%, #141b2e 0%, #07090e 70%);
+        }
+        #focus-overlay.active { display: flex !important; }
+        body.focus-active { overflow: hidden; }
+
+        .focus-icon {
+            font-size: 4.5rem;
+            line-height: 1;
+            filter: drop-shadow(0 8px 24px rgba(99,102,241,0.4));
+            animation: focus-pop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        .focus-title {
+            font-size: 1.6rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+        }
+        .focus-main-btn {
+            width: 100%;
+            max-width: 320px;
+            padding: 1rem 1.25rem;
+            border-radius: 1rem;
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+        @keyframes focus-pop {
+            from { opacity: 0; transform: scale(0.8) translateY(10px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        /* Keep the big focus timer readable on micro screens */
+        body.micro-2in .focus-icon,
+        body.micro-mode .focus-icon { font-size: 3rem; }
+        body.micro-2in .focus-title,
+        body.micro-mode .focus-title { font-size: 1.15rem; }
 
         /* Ambient animated background glow for a modern feel */
         body::before {
@@ -435,6 +464,39 @@
         <div id="undo-toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 glass-panel border border-indigo-500/40 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 opacity-0 translate-y-10 pointer-events-none">
             <span id="undo-toast-text" class="text-xs text-gray-200">Habit deleted</span>
             <button onclick="triggerUndo()" class="text-xs font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/30">Undo</button>
+        </div>
+
+        <!-- FULL-SCREEN FOCUS OVERLAY: one task fills the whole screen -->
+        <div id="focus-overlay" class="hidden fixed inset-0 z-[60] flex-col">
+            <!-- Top bar: progress + exit -->
+            <div class="flex items-center justify-between px-5 pt-5 pb-2">
+                <div class="flex items-center gap-2">
+                    <span id="focus-stack-icon" class="text-lg">⚡</span>
+                    <span id="focus-stack-name" class="text-sm font-bold text-gray-200"></span>
+                </div>
+                <button onclick="toggleFocusMode()" class="w-9 h-9 rounded-full flex items-center justify-center bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700/60 transition active:scale-95">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Progress bar + counter -->
+            <div class="px-5">
+                <div class="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+                    <span id="focus-progress-label">0 of 0 done</span>
+                    <span id="focus-progress-pct" class="font-mono">0%</span>
+                </div>
+                <div class="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                    <div id="focus-progress-bar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500" style="width:0%"></div>
+                </div>
+            </div>
+
+            <!-- Center: the single active task -->
+            <div id="focus-task-area" class="flex-1 flex flex-col items-center justify-center text-center px-6 gap-6">
+                <!-- Rendered by renderFocusOverlay() -->
+            </div>
+
+            <!-- Bottom controls -->
+            <div id="focus-bottom-controls" class="px-6 pb-8 flex items-center justify-center gap-3"></div>
         </div>
 
     </div>
@@ -1185,6 +1247,7 @@
 
             checkAndUpdateStreak();
             saveState();
+            if (appState.focusMode) renderFocusOverlay();
         }
 
         function toggleHabitTimer(habitId) {
@@ -1205,6 +1268,7 @@
                     if (habit.timerRemaining > 0) {
                         habit.timerRemaining--;
                         renderActiveStackContent();
+                        if (appState.focusMode) renderFocusOverlay();
                     } else {
                         clearInterval(activeTimerIntervals[habitId]);
                         delete activeTimerIntervals[habitId];
@@ -1213,10 +1277,12 @@
                         triggerCelebrationConfetti();
                         checkAndUpdateStreak();
                         saveState();
+                        if (appState.focusMode) renderFocusOverlay();
                     }
                 }, 1000);
             }
             renderActiveStackContent();
+            if (appState.focusMode) renderFocusOverlay();
         }
 
         function incrementCounter(habitId, step) {
@@ -1231,6 +1297,7 @@
                 checkAndUpdateStreak();
             }
             saveState();
+            if (appState.focusMode) renderFocusOverlay();
         }
 
         function setTimerMinutes(mins) {
@@ -1416,6 +1483,16 @@
 
         function toggleFocusMode() {
             appState.focusMode = !appState.focusMode;
+
+            // Focus mode needs a concrete stack to work through. If on the
+            // "ALL" overview, jump into the first stack that has habits.
+            if (appState.focusMode && appState.activeStackId === 'ALL') {
+                const target = appState.stacks.find(s =>
+                    appState.habits.some(h => h.stackId === s.id)
+                ) || appState.stacks[0];
+                if (target) appState.activeStackId = target.id;
+            }
+
             syncFocusModeUI();
 
             if (appState.focusMode) {
@@ -1432,11 +1509,133 @@
                 else banner.classList.add('hidden');
             }
             document.body.classList.toggle('focus-active', appState.focusMode);
+
             const btn = document.getElementById('btn-focus-mode');
             if (btn) {
                 const label = btn.querySelector('span');
                 if (label) label.textContent = appState.focusMode ? 'Exit' : 'Focus';
             }
+
+            const overlay = document.getElementById('focus-overlay');
+            if (overlay) {
+                if (appState.focusMode) {
+                    overlay.classList.remove('hidden');
+                    overlay.classList.add('active');
+                    renderFocusOverlay();
+                } else {
+                    overlay.classList.add('hidden');
+                    overlay.classList.remove('active');
+                }
+            }
+        }
+
+        // Renders the single, full-screen "current task" in focus mode.
+        function renderFocusOverlay() {
+            if (!appState.focusMode) return;
+            const overlay = document.getElementById('focus-overlay');
+            if (!overlay) return;
+
+            const stack = appState.stacks.find(s => s.id === appState.activeStackId);
+            const stackHabits = stack ? appState.habits.filter(h => h.stackId === stack.id) : [];
+            const done = stackHabits.filter(h => h.completed).length;
+            const total = stackHabits.length;
+            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+            // Header + progress
+            document.getElementById('focus-stack-icon').textContent = stack ? stack.icon : '⚡';
+            document.getElementById('focus-stack-name').textContent = stack ? stack.name : '';
+            document.getElementById('focus-progress-label').textContent = `${done} of ${total} done`;
+            document.getElementById('focus-progress-pct').textContent = `${pct}%`;
+            document.getElementById('focus-progress-bar').style.width = `${pct}%`;
+
+            const area = document.getElementById('focus-task-area');
+            const controls = document.getElementById('focus-bottom-controls');
+
+            // The current task is the first incomplete habit in the stack.
+            const current = stackHabits.find(h => !h.completed);
+
+            if (!current) {
+                // Everything in the stack is complete.
+                area.innerHTML = `
+                    <div class="focus-icon">🎉</div>
+                    <div class="focus-title text-emerald-300">All done!</div>
+                    <p class="text-sm text-gray-400 max-w-xs">You've completed every habit in this stack. Nice work.</p>
+                `;
+                controls.innerHTML = `
+                    <button onclick="toggleFocusMode()" class="focus-main-btn bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 active:scale-95 transition">
+                        Finish
+                    </button>
+                `;
+                return;
+            }
+
+            const remaining = total - done;
+            area.innerHTML = `
+                <div class="focus-icon">${current.icon || '⚡'}</div>
+                <div class="focus-title text-gray-100">${escapeHtml(current.name)}</div>
+                ${renderFocusTaskDetail(current)}
+                <p class="text-xs text-gray-500">${remaining} task${remaining === 1 ? '' : 's'} left in this stack</p>
+            `;
+            controls.innerHTML = renderFocusControls(current);
+        }
+
+        // Big central detail (timer countdown / counter progress) for the task.
+        function renderFocusTaskDetail(habit) {
+            if (habit.type === 'timer') {
+                const secs = habit.timerRemaining != null ? habit.timerRemaining : (habit.timerMinutes || 15) * 60;
+                return `<div class="text-4xl font-mono font-bold text-indigo-300">${formatSeconds(secs)}</div>`;
+            }
+            if (habit.type === 'counter') {
+                const cur = habit.counterCurrent || 0;
+                const tgt = habit.counterTarget || 10;
+                return `<div class="text-3xl font-mono font-bold text-purple-300">${cur} <span class="text-gray-500 text-xl">/ ${tgt}</span></div>`;
+            }
+            return '';
+        }
+
+        // Big action button(s) for the current task, plus a Skip control.
+        function renderFocusControls(habit) {
+            let primary = '';
+            if (habit.type === 'timer') {
+                const isRunning = activeTimerIntervals[habit.id];
+                primary = `
+                    <button onclick="toggleHabitTimer('${habit.id}')" class="focus-main-btn ${isRunning ? 'bg-amber-500/20 text-amber-200 border border-amber-500/40' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30'} active:scale-95 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid ${isRunning ? 'fa-pause' : 'fa-play'}"></i>
+                        <span>${isRunning ? 'Pause' : 'Start'}</span>
+                    </button>
+                `;
+            } else if (habit.type === 'counter') {
+                primary = `
+                    <button onclick="incrementCounter('${habit.id}', 1)" class="focus-main-btn bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 active:scale-95 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i><span>Add One</span>
+                    </button>
+                `;
+            } else {
+                primary = `
+                    <button onclick="toggleHabitComplete('${habit.id}')" class="focus-main-btn bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 active:scale-95 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-check"></i><span>Mark Done</span>
+                    </button>
+                `;
+            }
+            return `
+                <div class="w-full max-w-xs flex flex-col items-center gap-2">
+                    ${primary}
+                    <button onclick="skipFocusTask('${habit.id}')" class="text-xs text-gray-500 hover:text-gray-300 px-3 py-1.5 rounded-lg transition">
+                        Skip for now <i class="fa-solid fa-forward-step ml-1 text-[10px]"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        // Move the given task to the end of its stack so the next one surfaces.
+        function skipFocusTask(habitId) {
+            const idx = appState.habits.findIndex(h => h.id === habitId);
+            if (idx === -1) return;
+            const [h] = appState.habits.splice(idx, 1);
+            appState.habits.push(h);
+            renderFocusOverlay();
+            renderActiveStackContent();
+            saveState();
         }
 
         function requestAppFullscreen() {
