@@ -1117,10 +1117,15 @@
             if (habit.type === 'timer') {
                 const isRunning = activeTimerIntervals[habit.id];
                 return `
-                    <button onclick="toggleHabitTimer('${habit.id}')" class="px-2.5 py-1 rounded-lg ${isRunning ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-gray-800 text-indigo-300 border border-gray-700'} text-xs font-mono font-medium flex items-center gap-1 active:scale-95">
-                        <i class="fa-solid ${isRunning ? 'fa-pause' : 'fa-play'} text-[10px]"></i>
-                        <span>${formatSeconds(habit.timerRemaining || (habit.timerMinutes * 60))}</span>
-                    </button>
+                    <div class="flex items-center gap-1">
+                        <button onclick="toggleHabitTimer('${habit.id}')" class="px-2.5 py-1 rounded-lg ${isRunning ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-gray-800 text-indigo-300 border border-gray-700'} text-xs font-mono font-medium flex items-center gap-1 active:scale-95">
+                            <i class="fa-solid ${isRunning ? 'fa-pause' : 'fa-play'} text-[10px]"></i>
+                            <span>${formatSeconds(habit.timerRemaining || (habit.timerMinutes * 60))}</span>
+                        </button>
+                        <button onclick="completeTimerHabit('${habit.id}')" title="Mark done now" class="w-7 h-7 rounded-lg flex items-center justify-center transition ${habit.completed ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700'} active:scale-95">
+                            <i class="fa-solid fa-check text-xs"></i>
+                        </button>
+                    </div>
                 `;
             } else if (habit.type === 'counter') {
                 return `
@@ -1281,6 +1286,35 @@
                     }
                 }, 1000);
             }
+            renderActiveStackContent();
+            if (appState.focusMode) renderFocusOverlay();
+        }
+
+        // Lets a timed task be marked done immediately, even if the timer is
+        // still running. Stops the countdown and completes (or un-completes) it.
+        function completeTimerHabit(habitId) {
+            const habit = appState.habits.find(h => h.id === habitId);
+            if (!habit) return;
+
+            // Always stop any running countdown for this habit.
+            if (activeTimerIntervals[habitId]) {
+                clearInterval(activeTimerIntervals[habitId]);
+                delete activeTimerIntervals[habitId];
+            }
+
+            habit.completed = !habit.completed;
+
+            if (habit.completed) {
+                habit.timerRemaining = 0;
+                logCompletion(habit);
+                triggerCelebrationConfetti();
+            } else {
+                // Reset the timer so it can be run again.
+                habit.timerRemaining = (habit.timerMinutes || 15) * 60;
+            }
+
+            checkAndUpdateStreak();
+            saveState();
             renderActiveStackContent();
             if (appState.focusMode) renderFocusOverlay();
         }
@@ -1602,6 +1636,9 @@
                     <button onclick="toggleHabitTimer('${habit.id}')" class="focus-main-btn ${isRunning ? 'bg-amber-500/20 text-amber-200 border border-amber-500/40' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30'} active:scale-95 transition flex items-center justify-center gap-2">
                         <i class="fa-solid ${isRunning ? 'fa-pause' : 'fa-play'}"></i>
                         <span>${isRunning ? 'Pause' : 'Start'}</span>
+                    </button>
+                    <button onclick="completeTimerHabit('${habit.id}')" class="focus-main-btn bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 border border-emerald-500/40 active:scale-95 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-check"></i><span>Mark Done Now</span>
                     </button>
                 `;
             } else if (habit.type === 'counter') {
