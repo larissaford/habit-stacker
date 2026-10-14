@@ -1121,13 +1121,17 @@
         function getHabitControlHTML(habit) {
             if (habit.type === 'timer') {
                 const isRunning = activeTimerIntervals[habit.id];
+                // Completed timers are greyed out to match the muted card.
+                const timerBtnClass = habit.completed
+                    ? 'bg-gray-800/40 text-gray-500 border border-gray-800 grayscale'
+                    : (isRunning ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-gray-800 text-indigo-300 border border-gray-700');
                 return `
                     <div class="flex items-center gap-1">
-                        <button onclick="toggleHabitTimer('${habit.id}')" class="px-2.5 py-1 rounded-lg ${isRunning ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-gray-800 text-indigo-300 border border-gray-700'} text-xs font-mono font-medium flex items-center gap-1 active:scale-95">
+                        <button onclick="toggleHabitTimer('${habit.id}')" class="px-2.5 py-1 rounded-lg ${timerBtnClass} text-xs font-mono font-medium flex items-center gap-1 active:scale-95 transition-colors duration-300">
                             <i class="fa-solid ${isRunning ? 'fa-pause' : 'fa-play'} text-[10px]"></i>
                             <span>${formatSeconds(habit.timerRemaining || (habit.timerMinutes * 60))}</span>
                         </button>
-                        <button onclick="completeTimerHabit('${habit.id}')" title="Mark done now" class="w-7 h-7 rounded-lg flex items-center justify-center transition ${habit.completed ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700'} active:scale-95">
+                        <button onclick="completeTimerHabit('${habit.id}')" title="Mark done now" class="w-7 h-7 rounded-lg flex items-center justify-center transition ${habit.completed ? 'bg-indigo-600/70 text-white' : 'bg-gray-800 hover:bg-gray-700 text-gray-400 border border-gray-700'} active:scale-95">
                             <i class="fa-solid fa-check text-xs"></i>
                         </button>
                     </div>
