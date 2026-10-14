@@ -1060,6 +1060,7 @@
             // Render Habits List with Touch/Swipe Event Handlers Attached
             habitsContainer.innerHTML = stackHabits.map((habit, idx) => {
                 const isCompleted = habit.completed;
+                const isReordering = reorderHabitId === habit.id;
                 // Completed tasks fade into a darker, greyed-out card so active
                 // tasks stand out — with a subtle left accent to signal "done".
                 const cardBg = isCompleted
@@ -1068,9 +1069,12 @@
                 const completedAccent = isCompleted
                     ? 'before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-gradient-to-b before:from-indigo-500/60 before:to-purple-500/60'
                     : '';
+                // While a card is being dragged it's lifted out with a ring and
+                // raised above the others.
+                const reorderCls = isReordering ? 'ring-2 ring-indigo-500 shadow-2xl shadow-indigo-900/50 z-40 relative scale-[1.03]' : '';
 
                 return `
-                    <div class="relative overflow-hidden rounded-xl border ${cardBg} ${completedAccent} transition-all duration-300">
+                    <div class="relative overflow-hidden rounded-xl border ${cardBg} ${completedAccent} ${reorderCls} transition-[box-shadow,transform,opacity] duration-200">
                         <!-- Swipe Action Background Left (Revealed when dragging Right) -->
                         <div class="swipe-bg-right bg-emerald-600 text-white">
                             <i class="fa-solid fa-check text-base"></i>
@@ -1082,7 +1086,7 @@
                         </div>
 
                         <!-- Main Swipeable Card Body -->
-                        <div id="habit-card-${habit.id}" 
+                        <div id="habit-card-${habit.id}"
                              data-habit-id="${habit.id}"
                              class="swipe-card p-3 glass-card flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing"
                              ontouchstart="handleTouchStart(event, '${habit.id}')"
@@ -1155,53 +1159,69 @@
         }
 
         let touchStartX = 0;
+        let touchStartY = 0;
         let touchCurrentX = 0;
         let activeSwipeHabitId = null;
         let longPressTimer = null;
+        let reorderHabitId = null;   // habit currently being drag-reordered
+        let dragPointerY = 0;        // last pointer Y while dragging
 
         function handleTouchStart(e, habitId) {
             touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
             touchCurrentX = touchStartX;
             activeSwipeHabitId = habitId;
 
-            // Setup Long Press Delay for Reordering Task
+            // A long press promotes the gesture to a vertical drag-to-reorder.
             longPressTimer = setTimeout(() => {
-                triggerLongPressReorder(habitId);
-            }, 450);
+                beginDragReorder(habitId);
+            }, 400);
         }
 
         function handleTouchMove(e, habitId) {
+            // In drag-reorder mode vertical movement reorders the list.
+            if (reorderHabitId === habitId) {
+                e.preventDefault();
+                dragPointerY = e.touches[0].clientY;
+                updateDragReorder(dragPointerY);
+                return;
+            }
+
             if (!activeSwipeHabitId) return;
             touchCurrentX = e.touches[0].clientX;
             const diffX = touchCurrentX - touchStartX;
+            const diffY = e.touches[0].clientY - touchStartY;
 
-            if (Math.abs(diffX) > 10) {
-                clearTimeout(longPressTimer); // Cancel long press drag on swipe motion
+            // Any meaningful movement cancels the pending long-press.
+            if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+                clearTimeout(longPressTimer);
             }
 
-            const cardEl = document.getElementById(`habit-card-${habitId}`);
-            if (cardEl) {
-                cardEl.style.transform = `translateX(${diffX}px)`;
+            // Only treat clearly-horizontal motion as a swipe.
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                const cardEl = document.getElementById(`habit-card-${habitId}`);
+                if (cardEl) cardEl.style.transform = `translateX(${diffX}px)`;
             }
         }
 
         function handleTouchEnd(e, habitId) {
             clearTimeout(longPressTimer);
+
+            if (reorderHabitId === habitId) {
+                endDragReorder();
+                return;
+            }
+
             if (!activeSwipeHabitId) return;
 
             const diffX = touchCurrentX - touchStartX;
             const cardEl = document.getElementById(`habit-card-${habitId}`);
-
-            if (cardEl) {
-                cardEl.style.transform = 'translateX(0px)';
-            }
+            if (cardEl) cardEl.style.transform = 'translateX(0px)';
 
             const SWIPE_THRESHOLD = 80;
             if (diffX > SWIPE_THRESHOLD) {
-                // Swiped Right
                 executeSwipeAction(appState.settings.swipeRightAction || 'complete', habitId);
             } else if (diffX < -SWIPE_THRESHOLD) {
-                // Swiped Left
                 executeSwipeAction(appState.settings.swipeLeftAction || 'edit', habitId);
             }
 
@@ -1209,23 +1229,100 @@
         }
 
         function handleMouseDown(e, habitId) {
-            // Long Press handler for Desktop Mouse
+            const startY = e.clientY;
+
             longPressTimer = setTimeout(() => {
-                triggerLongPressReorder(habitId);
-            }, 450);
+                beginDragReorder(habitId);
+            }, 400);
+
+            const onMouseMove = (ev) => {
+                if (reorderHabitId === habitId) {
+                    dragPointerY = ev.clientY;
+                    updateDragReorder(dragPointerY);
+                } else if (Math.abs(ev.clientY - startY) > 10) {
+                    // Moved before the long-press fired — treat as a normal click/scroll.
+                    clearTimeout(longPressTimer);
+                }
+            };
 
             const onMouseUp = () => {
                 clearTimeout(longPressTimer);
+                if (reorderHabitId === habitId) endDragReorder();
+                window.removeEventListener('mousemove', onMouseMove);
                 window.removeEventListener('mouseup', onMouseUp);
             };
+
+            window.addEventListener('mousemove', onMouseMove);
             window.addEventListener('mouseup', onMouseUp);
         }
 
-        function triggerLongPressReorder(habitId) {
+        // Enter drag-to-reorder mode: lift the card and record the pointer.
+        function beginDragReorder(habitId) {
             const habit = appState.habits.find(h => h.id === habitId);
             if (!habit) return;
-            showUndoToast(`Reordering mode active for "${habit.name}"`);
-            if (navigator.vibrate) navigator.vibrate(50);
+
+            const cardEl = document.getElementById(`habit-card-${habitId}`);
+            if (cardEl) cardEl.style.transform = 'translateX(0px)';
+            activeSwipeHabitId = null;
+            reorderHabitId = habitId;
+            if (navigator.vibrate) navigator.vibrate(40);
+            renderActiveStackContent();
+        }
+
+        // While dragging, if the pointer passes the midpoint of a neighbour card,
+        // swap the dragged habit with that neighbour and re-render live.
+        function updateDragReorder(pointerY) {
+            const draggedEl = document.getElementById(`habit-card-${reorderHabitId}`);
+            if (!draggedEl) return;
+
+            const container = document.getElementById('habits-list-container');
+            if (!container) return;
+
+            const draggedWrapper = draggedEl.parentElement;
+            const siblings = Array.from(container.children);
+            const draggedIndex = siblings.indexOf(draggedWrapper);
+
+            for (let i = 0; i < siblings.length; i++) {
+                if (i === draggedIndex) continue;
+                const rect = siblings[i].getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+
+                if (i < draggedIndex && pointerY < midpoint) {
+                    moveHabitToIndex(reorderHabitId, i);
+                    return;
+                }
+                if (i > draggedIndex && pointerY > midpoint) {
+                    moveHabitToIndex(reorderHabitId, i);
+                    return;
+                }
+            }
+        }
+
+        function endDragReorder() {
+            reorderHabitId = null;
+            saveState();
+            renderActiveStackContent();
+        }
+
+        // Reposition a habit to a target visual index within its own stack.
+        function moveHabitToIndex(habitId, targetIndex) {
+            const habit = appState.habits.find(h => h.id === habitId);
+            if (!habit) return;
+
+            const siblings = appState.habits.filter(h => h.stackId === habit.stackId);
+            const from = siblings.findIndex(h => h.id === habitId);
+            if (from === -1 || targetIndex < 0 || targetIndex >= siblings.length || from === targetIndex) return;
+
+            siblings.splice(from, 1);
+            siblings.splice(targetIndex, 0, habit);
+
+            // Rebuild the global list, substituting this stack's new order.
+            let si = 0;
+            appState.habits = appState.habits.map(h =>
+                h.stackId === habit.stackId ? siblings[si++] : h
+            );
+
+            renderActiveStackContent();
         }
 
         function executeSwipeAction(action, habitId) {
