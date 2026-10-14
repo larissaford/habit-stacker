@@ -311,6 +311,11 @@
         #stacks-grid-container > div {
             animation: card-in 0.28s ease-out both;
         }
+        /* Suppress the entrance animation for the single render right after a
+           drag-reorder commit, so the list settles without a flicker. */
+        #habits-list-container.no-entrance > div {
+            animation: none !important;
+        }
 
         /* Modal entrance */
         @keyframes modal-in {
@@ -319,6 +324,16 @@
         }
         [id^="modal-"]:not(.hidden) > div {
             animation: modal-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+
+        /* Lifted card while drag-reordering (applied without a re-render) */
+        .dragging-lifted {
+            animation: none !important;
+        }
+        .dragging-lifted > [id^="habit-card-"] {
+            box-shadow: 0 20px 40px -8px rgba(49, 46, 129, 0.6),
+                        0 0 0 2px rgba(99, 102, 241, 0.7) inset;
+            border-radius: 0.75rem;
         }
 
         /* Checkmark pop on complete */
@@ -1060,7 +1075,6 @@
             // Render Habits List with Touch/Swipe Event Handlers Attached
             habitsContainer.innerHTML = stackHabits.map((habit, idx) => {
                 const isCompleted = habit.completed;
-                const isReordering = reorderHabitId === habit.id;
                 // Completed tasks fade into a darker, greyed-out card so active
                 // tasks stand out — with a subtle left accent to signal "done".
                 const cardBg = isCompleted
@@ -1069,12 +1083,8 @@
                 const completedAccent = isCompleted
                     ? 'before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-gradient-to-b before:from-indigo-500/60 before:to-purple-500/60'
                     : '';
-                // While a card is being dragged it's lifted out with a ring and
-                // raised above the others.
-                const reorderCls = isReordering ? 'ring-2 ring-indigo-500 shadow-2xl shadow-indigo-900/50 z-40 relative scale-[1.03]' : '';
-
                 return `
-                    <div class="relative overflow-hidden rounded-xl border ${cardBg} ${completedAccent} ${reorderCls} transition-[box-shadow,transform,opacity] duration-200">
+                    <div class="relative overflow-hidden rounded-xl border ${cardBg} ${completedAccent} transition-[box-shadow,opacity] duration-200">
                         <!-- Swipe Action Background Left (Revealed when dragging Right) -->
                         <div class="swipe-bg-right bg-emerald-600 text-white">
                             <i class="fa-solid fa-check text-base"></i>
@@ -1165,11 +1175,18 @@
         let longPressTimer = null;
         let reorderHabitId = null;   // habit currently being drag-reordered
         let dragPointerY = 0;        // last pointer Y while dragging
+        // Smooth-drag bookkeeping (no re-render during the drag):
+        let dragStartPointerY = 0;   // pointer Y when the lift began
+        let dragSiblings = [];       // [{ wrapper, id, baseTop, height, shift }]
+        let dragDraggedIndex = -1;   // original index of the lifted card
+        let dragTargetIndex = -1;    // current drop index while dragging
+        let dragCardHeight = 0;      // dragged card height + gap
 
         function handleTouchStart(e, habitId) {
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
             touchCurrentX = touchStartX;
+            dragStartPointerY = e.touches[0].clientY;
             activeSwipeHabitId = habitId;
 
             // A long press promotes the gesture to a vertical drag-to-reorder.
@@ -1186,6 +1203,10 @@
                 updateDragReorder(dragPointerY);
                 return;
             }
+
+            // While a lift is pending, keep the latest pointer so the lift
+            // starts from the correct origin.
+            dragStartPointerY = e.touches[0].clientY;
 
             if (!activeSwipeHabitId) return;
             touchCurrentX = e.touches[0].clientX;
@@ -1230,6 +1251,7 @@
 
         function handleMouseDown(e, habitId) {
             const startY = e.clientY;
+            dragStartPointerY = e.clientY;
 
             longPressTimer = setTimeout(() => {
                 beginDragReorder(habitId);
@@ -1256,62 +1278,141 @@
             window.addEventListener('mouseup', onMouseUp);
         }
 
-        // Enter drag-to-reorder mode: lift the card and record the pointer.
+        // Enter drag-to-reorder mode. We lift the card and measure every sibling
+        // ONCE, then animate purely with CSS transforms — no re-render until drop,
+        // so there is zero flicker during the drag.
         function beginDragReorder(habitId) {
             const habit = appState.habits.find(h => h.id === habitId);
             if (!habit) return;
 
-            const cardEl = document.getElementById(`habit-card-${habitId}`);
-            if (cardEl) cardEl.style.transform = 'translateX(0px)';
+            const container = document.getElementById('habits-list-container');
+            const draggedEl = document.getElementById(`habit-card-${habitId}`);
+            if (!container || !draggedEl) return;
+
+            if (draggedEl) draggedEl.style.transform = 'translateX(0px)';
             activeSwipeHabitId = null;
             reorderHabitId = habitId;
             if (navigator.vibrate) navigator.vibrate(40);
-            renderActiveStackContent();
-        }
 
-        // While dragging, if the pointer passes the midpoint of a neighbour card,
-        // swap the dragged habit with that neighbour and re-render live.
-        function updateDragReorder(pointerY) {
-            const draggedEl = document.getElementById(`habit-card-${reorderHabitId}`);
-            if (!draggedEl) return;
+            // Snapshot the geometry of all card wrappers in this list.
+            const wrappers = Array.from(container.children);
+            dragSiblings = wrappers.map(w => {
+                const rect = w.getBoundingClientRect();
+                const card = w.querySelector('[id^="habit-card-"]');
+                const id = card ? card.id.replace('habit-card-', '') : null;
+                return { wrapper: w, id, baseTop: rect.top, height: rect.height, shift: 0 };
+            });
 
-            const container = document.getElementById('habits-list-container');
-            if (!container) return;
-
-            const draggedWrapper = draggedEl.parentElement;
-            const siblings = Array.from(container.children);
-            const draggedIndex = siblings.indexOf(draggedWrapper);
-
-            for (let i = 0; i < siblings.length; i++) {
-                if (i === draggedIndex) continue;
-                const rect = siblings[i].getBoundingClientRect();
-                const midpoint = rect.top + rect.height / 2;
-
-                if (i < draggedIndex && pointerY < midpoint) {
-                    moveHabitToIndex(reorderHabitId, i);
-                    return;
-                }
-                if (i > draggedIndex && pointerY > midpoint) {
-                    moveHabitToIndex(reorderHabitId, i);
-                    return;
-                }
+            dragDraggedIndex = dragSiblings.findIndex(s => s.id === habitId);
+            dragTargetIndex = dragDraggedIndex;
+            const draggedWrapper = dragSiblings[dragDraggedIndex].wrapper;
+            // Vertical stride = card height + the vertical gap between cards.
+            if (dragSiblings.length > 1) {
+                const a = dragSiblings[0], b = dragSiblings[1];
+                dragCardHeight = b.baseTop - a.baseTop;
+            } else {
+                dragCardHeight = dragSiblings[dragDraggedIndex].height;
             }
+
+            // Lift the dragged card above the others; let neighbours transition.
+            draggedWrapper.style.transition = 'none';
+            draggedWrapper.style.zIndex = '50';
+            draggedWrapper.style.position = 'relative';
+            draggedWrapper.style.willChange = 'transform';
+            draggedWrapper.classList.add('dragging-lifted');
+            dragSiblings.forEach((s, i) => {
+                if (i === dragDraggedIndex) return;
+                s.wrapper.style.transition = 'transform 220ms cubic-bezier(0.2, 0, 0, 1)';
+                s.wrapper.style.willChange = 'transform';
+            });
+            dragStartPointerY = dragPointerY || dragStartPointerY;
         }
 
+        // While dragging, translate the lifted card to follow the pointer and
+        // slide neighbours out of the way. Pure transforms — no DOM rebuild.
+        function updateDragReorder(pointerY) {
+            if (dragDraggedIndex === -1 || !dragSiblings.length) return;
+            const dragged = dragSiblings[dragDraggedIndex];
+            const delta = pointerY - dragStartPointerY;
+
+            // Move the lifted card with the finger (scaled up slightly for depth).
+            dragged.wrapper.style.transform = `translateY(${delta}px) scale(1.03)`;
+
+            // Determine where it would drop based on how many strides it moved.
+            let newIndex = dragDraggedIndex + Math.round(delta / (dragCardHeight || 1));
+            newIndex = Math.max(0, Math.min(dragSiblings.length - 1, newIndex));
+
+            if (newIndex === dragTargetIndex) return;
+            dragTargetIndex = newIndex;
+
+            // Shift each non-dragged neighbour to open a gap at the target slot.
+            dragSiblings.forEach((s, i) => {
+                if (i === dragDraggedIndex) return;
+                let shift = 0;
+                if (dragDraggedIndex < dragTargetIndex && i > dragDraggedIndex && i <= dragTargetIndex) {
+                    shift = -dragCardHeight; // slide up to fill vacated space
+                } else if (dragDraggedIndex > dragTargetIndex && i < dragDraggedIndex && i >= dragTargetIndex) {
+                    shift = dragCardHeight;  // slide down to make room
+                }
+                if (s.shift !== shift) {
+                    s.shift = shift;
+                    s.wrapper.style.transform = `translateY(${shift}px)`;
+                }
+            });
+        }
+
+        // Drop: animate the lifted card into its slot, then commit the data
+        // reorder with a single re-render after the settle animation.
         function endDragReorder() {
+            if (dragDraggedIndex === -1) {
+                reorderHabitId = null;
+                return;
+            }
+
+            const dragged = dragSiblings[dragDraggedIndex];
+            const fromId = reorderHabitId;
+            const targetIndex = dragTargetIndex;
+
+            // Final resting offset for the dragged card relative to its origin.
+            const restOffset = (targetIndex - dragDraggedIndex) * dragCardHeight;
+            dragged.wrapper.style.transition = 'transform 200ms cubic-bezier(0.2, 0, 0, 1)';
+            dragged.wrapper.style.transform = `translateY(${restOffset}px) scale(1)`;
+
+            const siblingsSnapshot = dragSiblings;
             reorderHabitId = null;
-            saveState();
-            renderActiveStackContent();
+            dragDraggedIndex = -1;
+
+            const commit = () => {
+                // Clear inline styles so the fresh render starts clean.
+                siblingsSnapshot.forEach(s => {
+                    s.wrapper.style.transition = '';
+                    s.wrapper.style.transform = '';
+                    s.wrapper.style.zIndex = '';
+                    s.wrapper.style.position = '';
+                    s.wrapper.style.willChange = '';
+                    s.wrapper.classList.remove('dragging-lifted');
+                });
+                dragSiblings = [];
+                dragTargetIndex = -1;
+                commitHabitReorder(fromId, targetIndex);
+            };
+
+            // Wait for the settle animation, then commit + re-render once.
+            setTimeout(commit, 210);
         }
 
-        // Reposition a habit to a target visual index within its own stack.
-        function moveHabitToIndex(habitId, targetIndex) {
+        // Reposition a habit to a target visual index within its own stack,
+        // then persist and re-render exactly once.
+        function commitHabitReorder(habitId, targetIndex) {
             const habit = appState.habits.find(h => h.id === habitId);
-            if (!habit) return;
+            if (!habit) { renderActiveStackContent(); return; }
 
             const siblings = appState.habits.filter(h => h.stackId === habit.stackId);
             const from = siblings.findIndex(h => h.id === habitId);
-            if (from === -1 || targetIndex < 0 || targetIndex >= siblings.length || from === targetIndex) return;
+            if (from === -1 || targetIndex < 0 || targetIndex >= siblings.length || from === targetIndex) {
+                renderActiveStackContent();
+                return;
+            }
 
             siblings.splice(from, 1);
             siblings.splice(targetIndex, 0, habit);
@@ -1322,7 +1423,18 @@
                 h.stackId === habit.stackId ? siblings[si++] : h
             );
 
+            saveState();
+
+            // Render once with the entrance animation suppressed so the newly
+            // ordered cards appear instantly in place (no flicker on drop).
+            const container = document.getElementById('habits-list-container');
+            if (container) container.classList.add('no-entrance');
             renderActiveStackContent();
+            if (container) {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => container.classList.remove('no-entrance'));
+                });
+            }
         }
 
         function executeSwipeAction(action, habitId) {
