@@ -66,12 +66,31 @@
             background: rgba(99, 102, 241, 0.8);
         }
 
-        /* Dynamic Text Scaling Classes based on setting */
-        .text-scale-xs { font-size: 11px !important; }
-        .text-scale-sm { font-size: 13px !important; }
-        .text-scale-md { font-size: 15px !important; }
-        .text-scale-lg { font-size: 18px !important; }
-        .text-scale-xl { font-size: 22px !important; }
+        /* Dynamic Text Scaling Classes based on setting.
+           Each level sets a --ui-scale multiplier that cards use to grow their
+           padding/spacing AND a base font-size, so bigger settings visibly
+           enlarge the whole card, not just the text. */
+        .text-scale-xs { font-size: 10px !important; --ui-scale: 0.78; }
+        .text-scale-sm { font-size: 13px !important; --ui-scale: 0.9; }
+        .text-scale-md { font-size: 15px !important; --ui-scale: 1; }
+        .text-scale-lg { font-size: 20px !important; --ui-scale: 1.25; }
+        .text-scale-xl { font-size: 27px !important; --ui-scale: 1.6; }
+
+        /* Scale the habit cards themselves with the chosen size so bigger
+           settings are dramatic — larger padding, icons and controls. */
+        [class*="text-scale-"] .swipe-card {
+            padding: calc(0.875rem * var(--ui-scale, 1)) calc(1rem * var(--ui-scale, 1)) !important;
+            border-radius: calc(0.75rem * var(--ui-scale, 1)) !important;
+        }
+        [class*="text-scale-"] .swipe-card h4 {
+            font-size: calc(1em * var(--ui-scale, 1)) !important;
+        }
+        [class*="text-scale-"] .swipe-card > div > span:first-child {
+            font-size: calc(1.25rem * var(--ui-scale, 1)) !important;
+        }
+        [class*="text-scale-"] #habits-list-container {
+            gap: calc(0.75rem * var(--ui-scale, 1)) !important;
+        }
 
         /* Glassmorphic Effects */
         .glass-panel {
@@ -1338,8 +1357,26 @@
             // Move the lifted card with the finger (scaled up slightly for depth).
             dragged.wrapper.style.transform = `translateY(${delta}px) scale(1.03)`;
 
-            // Determine where it would drop based on how many strides it moved.
-            let newIndex = dragDraggedIndex + Math.round(delta / (dragCardHeight || 1));
+            // Determine the drop slot by the lifted card's CURRENT centre, so a
+            // spot opens up at exactly where you hover and hold the card.
+            // Centre of the dragged card as it floats under the pointer.
+            const draggedCentre =
+                dragged.baseTop + dragged.height / 2 + delta;
+
+            // Find which sibling slot that centre now overlaps. A neighbour yields
+            // its spot only once the lifted card's centre crosses that neighbour's
+            // midpoint, so hovering over a slot opens it there.
+            let newIndex = dragDraggedIndex;
+            for (let i = 0; i < dragSiblings.length; i++) {
+                if (i === dragDraggedIndex) continue;
+                const s = dragSiblings[i];
+                const siblingCentre = s.baseTop + s.height / 2;
+                if (i < dragDraggedIndex && draggedCentre < siblingCentre) {
+                    newIndex = Math.min(newIndex, i);
+                } else if (i > dragDraggedIndex && draggedCentre > siblingCentre) {
+                    newIndex = Math.max(newIndex, i);
+                }
+            }
             newIndex = Math.max(0, Math.min(dragSiblings.length - 1, newIndex));
 
             if (newIndex === dragTargetIndex) return;
@@ -2085,7 +2122,7 @@
             viewport.classList.remove('text-scale-xs', 'text-scale-sm', 'text-scale-md', 'text-scale-lg', 'text-scale-xl');
             
             const scaleMap = { 1: 'text-scale-xs', 2: 'text-scale-sm', 3: 'text-scale-md', 4: 'text-scale-lg', 5: 'text-scale-xl' };
-            const labelMap = { 1: 'Extra Small (11px)', 2: 'Small (13px)', 3: 'Medium (15px)', 4: 'Large (18px)', 5: 'Extra Large (22px)' };
+            const labelMap = { 1: 'Compact', 2: 'Small', 3: 'Medium', 4: 'Large', 5: 'Extra Large' };
 
             viewport.classList.add(scaleMap[val] || 'text-scale-md');
 
