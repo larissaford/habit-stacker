@@ -1341,6 +1341,10 @@
             draggedWrapper.classList.add('dragging-lifted');
             dragSiblings.forEach((s, i) => {
                 if (i === dragDraggedIndex) return;
+                // Kill any lingering entrance animation; its `both` fill-mode
+                // keeps a transform that would override our inline shift and stop
+                // neighbours from moving aside.
+                s.wrapper.style.animation = 'none';
                 s.wrapper.style.transition = 'transform 220ms cubic-bezier(0.2, 0, 0, 1)';
                 s.wrapper.style.willChange = 'transform';
             });
@@ -1357,45 +1361,41 @@
             // Move the lifted card with the finger (scaled up slightly for depth).
             dragged.wrapper.style.transform = `translateY(${delta}px) scale(1.03)`;
 
-            // Determine the drop slot by the lifted card's CURRENT centre, so a
-            // spot opens up at exactly where you hover and hold the card.
-            // Centre of the dragged card as it floats under the pointer.
-            const draggedCentre =
-                dragged.baseTop + dragged.height / 2 + delta;
-
-            // Find which sibling slot that centre now overlaps. A neighbour yields
-            // its spot only once the lifted card's centre crosses that neighbour's
-            // midpoint, so hovering over a slot opens it there.
-            let newIndex = dragDraggedIndex;
-            for (let i = 0; i < dragSiblings.length; i++) {
-                if (i === dragDraggedIndex) continue;
-                const s = dragSiblings[i];
-                const siblingCentre = s.baseTop + s.height / 2;
-                if (i < dragDraggedIndex && draggedCentre < siblingCentre) {
-                    newIndex = Math.min(newIndex, i);
-                } else if (i > dragDraggedIndex && draggedCentre > siblingCentre) {
-                    newIndex = Math.max(newIndex, i);
-                }
-            }
+            // Determine the drop slot from how far the lifted card's centre has
+            // travelled. A neighbour yields its spot once the card has moved a bit
+            // more than a third of a card into it, so a gap opens responsively
+            // right where you hover and hold the card.
+            const stride = dragCardHeight || dragged.height || 1;
+            // Bias the rounding so the shift triggers after ~40% of a stride
+            // rather than a full 50% — makes the neighbours visibly step aside
+            // much sooner while you drag.
+            const steps = delta / stride;
+            let newIndex = dragDraggedIndex +
+                (steps >= 0 ? Math.floor(steps + 0.6) : Math.ceil(steps - 0.6));
             newIndex = Math.max(0, Math.min(dragSiblings.length - 1, newIndex));
 
-            if (newIndex === dragTargetIndex) return;
-            dragTargetIndex = newIndex;
+            if (newIndex !== dragTargetIndex) {
+                dragTargetIndex = newIndex;
 
-            // Shift each non-dragged neighbour to open a gap at the target slot.
-            dragSiblings.forEach((s, i) => {
-                if (i === dragDraggedIndex) return;
-                let shift = 0;
-                if (dragDraggedIndex < dragTargetIndex && i > dragDraggedIndex && i <= dragTargetIndex) {
-                    shift = -dragCardHeight; // slide up to fill vacated space
-                } else if (dragDraggedIndex > dragTargetIndex && i < dragDraggedIndex && i >= dragTargetIndex) {
-                    shift = dragCardHeight;  // slide down to make room
-                }
-                if (s.shift !== shift) {
-                    s.shift = shift;
-                    s.wrapper.style.transform = `translateY(${shift}px)`;
-                }
-            });
+                // Shift each non-dragged neighbour to open a gap at the target slot.
+                dragSiblings.forEach((s, i) => {
+                    if (i === dragDraggedIndex) return;
+                    let shift = 0;
+                    if (dragDraggedIndex < dragTargetIndex && i > dragDraggedIndex && i <= dragTargetIndex) {
+                        shift = -stride; // slide up to fill vacated space
+                    } else if (dragDraggedIndex > dragTargetIndex && i < dragDraggedIndex && i >= dragTargetIndex) {
+                        shift = stride;  // slide down to make room
+                    }
+                    if (s.shift !== shift) {
+                        s.shift = shift;
+                        // Ensure a transform transition is present so the step is animated.
+                        if (!s.wrapper.style.transition) {
+                            s.wrapper.style.transition = 'transform 180ms cubic-bezier(0.2, 0, 0, 1)';
+                        }
+                        s.wrapper.style.transform = `translateY(${shift}px)`;
+                    }
+                });
+            }
         }
 
         // Drop: animate the lifted card into its slot, then commit the data
@@ -1424,6 +1424,7 @@
                 siblingsSnapshot.forEach(s => {
                     s.wrapper.style.transition = '';
                     s.wrapper.style.transform = '';
+                    s.wrapper.style.animation = '';
                     s.wrapper.style.zIndex = '';
                     s.wrapper.style.position = '';
                     s.wrapper.style.willChange = '';
